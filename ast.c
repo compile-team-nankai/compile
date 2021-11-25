@@ -3,12 +3,15 @@
 #include <stdarg.h>
 #include "ast.h"
 
-node_t *new_node(char *node_type, int n, ...) {
-    node_t *node = malloc(sizeof(node_t));
+int index_count = 0;
+
+node_t *new_node(const char *node_type, int n, ...) {
+    node_t *node = (node_t*)malloc(sizeof(node_t));
     node->node_type = node_type;
     node->value = NULL;
     node->children_num = n;
-    node->children = malloc(sizeof(node_t *) * n);
+    node->children = (node_t**)malloc(sizeof(node_t *) * n);
+    node->index = index_count++;
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; ++i) {
@@ -17,19 +20,20 @@ node_t *new_node(char *node_type, int n, ...) {
     return node;
 }
 
-node_t *new_value(char *node_type, char *value) {
-    node_t *node = malloc(sizeof(node_t));
+node_t *new_value(const char *node_type, char *value) {
+    node_t *node = (node_t*)malloc(sizeof(node_t));
     node->node_type = node_type;
     node->value = value;
     node->children_num = 0;
     node->children = NULL;
+    node->index = index_count++;
     return node;
 }
 
 node_t *merge_node(node_t *father, node_t *child) {
     father->children_num += 1;
     node_t **temp = father->children;
-    father->children = malloc(sizeof(node_t *) * father->children_num);
+    father->children = (node_t**)malloc(sizeof(node_t *) * father->children_num);
     for (int i = 0; i < father->children_num - 1; ++i) {
         father->children[i] = temp[i];
     }
@@ -41,7 +45,7 @@ node_t *merge_node(node_t *father, node_t *child) {
 node_t *l_merge_node(node_t *father, node_t *child) {
     father->children_num += 1;
     node_t **temp = father->children;
-    father->children = malloc(sizeof(node_t *) * father->children_num);
+    father->children = (node_t**)malloc(sizeof(node_t *) * father->children_num);
     for (int i = 0; i < father->children_num - 1; ++i) {
         father->children[i + 1] = temp[i];
     }

@@ -3,7 +3,7 @@
 #include "ast_symbol.h"
 extern int yylex(void);
 extern void yyerror(char *str, ...);
-int yydebug = 0;
+extern int yydebug;
 %}
 
 %union{
@@ -37,7 +37,10 @@ int yydebug = 0;
 
 %%
 
-    root: program   { print_tree($1); free_tree($1); }
+    root: program   { 
+        print_tree($1);
+        free_tree($1);
+        }
         ;
 
     program: start      { $$ = new_node("program", 1, $1); }
@@ -186,34 +189,34 @@ int yydebug = 0;
         | initialize_list COMMA initialize_expr { $$ = merge_node($1, $3); }
         ;
 
-    expr: const                                 { $$ = new_node("expression", 1, $1); }
-        | ID                                    { $$ = new_node("expression", 1, $1); }
+    expr: const                                 { $$ = $1; }
+        | ID                                    { $$ = $1; }
         | call_func                             { $$ = new_node("expression", 1, $1); }
         | dereference                           { $$ = new_node("expression", 1, $1); }
         | member_selection                      { $$ = new_node("expression", 1, $1); }
-        | LP expr RP                            { $$ = new_node("expression", 1, $2); }
+        | LP expr RP                            { $$ = $2; }
         | expr subscript                        { $$ = new_node("expression", 2, $1, $2); }
         | left_unary_operator expr %prec NOT    { $$ = new_node("expression", 2 ,$1, $2); }
         | expr right_unary_operator %prec NOT   { $$ = new_node("expression", 2 ,$1, $2); }
-        | expr ADD expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr SUB expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr MUL expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr DIV expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr MOD expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr EQ expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr GT expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr LT expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr GE expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr LE expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr NE expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr AND expr                         { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr OR expr                          { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr ADD_ASSIGN expr                  { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr SUB_ASSIGN expr                  { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr MUL_ASSIGN expr                  { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr DIV_ASSIGN expr                  { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr MOD_ASSIGN expr                  { $$ = new_node("expression", 3, $1, $2, $3); }
-        | expr ASSIGN expr                      { $$ = new_node("expression", 3, $1, $2, $3); }
+        | expr ADD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr SUB expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr MUL expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr DIV expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr MOD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr EQ expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr GT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr LT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr GE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr LE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr NE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr AND expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr OR expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr ADD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr SUB_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr MUL_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr DIV_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr MOD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr ASSIGN expr                      { $$ = new_node($2->node_type, 2, $1, $3); }
         ;
 
     member_selection: expr DOT ID   { $$ = new_node("member selection", 3, $1, $2, $3); }
