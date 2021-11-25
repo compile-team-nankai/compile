@@ -2,10 +2,8 @@
 
 FILE *ast_out;
 
-void handle_node(node_t *node, symbol_table_t *table);
-
 void handle_declare(node_t *declare_node, symbol_table_t *table) {
-    char *type = declare_node->children[0]->node_type;
+    const char *type = declare_node->children[0]->node_type;
     symbol_t symbol;
     for (int i = 1; i < declare_node->children_num; ++i) {
         node_t *clause = declare_node->children[i];
@@ -14,7 +12,7 @@ void handle_declare(node_t *declare_node, symbol_table_t *table) {
             symbol.name = clause->children[0]->value;
         } else if (strcmp(clause->children[0]->node_type, "pointer") == 0) {
             node_t *pointer = clause->children[0];
-            symbol.type = malloc(sizeof(char) * (strlen(type) + pointer->children_num));
+            symbol.type = (char*)malloc(sizeof(char) * (strlen(type) + pointer->children_num));
             strcpy(symbol.type, type);
             for (int j = 0; j < pointer->children_num - 1; ++j) {
                 strcat(symbol.type, "*");
@@ -22,7 +20,7 @@ void handle_declare(node_t *declare_node, symbol_table_t *table) {
             symbol.name = pointer->children[pointer->children_num - 1]->value;
         } else if (strcmp(clause->children[0]->node_type, "array") == 0) {
             node_t *array = clause->children[0];
-            symbol.type = malloc(sizeof(char) * (strlen(type) + array->children_num * 2 - 1));
+            symbol.type = (char*)malloc(sizeof(char) * (strlen(type) + array->children_num * 2 - 1));
             strcpy(symbol.type, type);
             for (int j = 0; j < array->children_num - 1; ++j) {
                 strcat(symbol.type, "[]");
@@ -45,7 +43,7 @@ void handle_function_declare(node_t *function_node, symbol_table_t *table) {
         handle_declare(clause, function_scope);
     }
     handle_node(function_node->children[3], function_scope);
-    symbol.type = malloc(sizeof(char) * (strlen(function_node->children[0]->node_type) + 3 + args_len + 1));
+    symbol.type = (char*)malloc(sizeof(char) * (strlen(function_node->children[0]->node_type) + 3 + args_len + 1));
     strcpy(symbol.type, function_node->children[0]->node_type);
     strcat(symbol.type, " (");
     for (int i = 0; i < function_node->children[2]->children_num; ++i) {
@@ -93,8 +91,6 @@ symbol_table_t *generate_symbol_table(node_t *root) {
     handle_node(root, table);
     return table;
 }
-
-void print_sub_tree(node_t *node, int depth, symbol_table_t *table);
 
 void print_function_tree(node_t *function_node, int depth, symbol_table_t *table) {
     for (int i = 0; i < depth; ++i) {
@@ -157,9 +153,8 @@ void print_sub_tree(node_t *node, int depth, symbol_table_t *table) {
         fprintf(ast_out, " <%s, %s, %lu>", symbol->type, symbol->name, (unsigned long) symbol);
     }
     fprintf(ast_out, " (%d)\n", node->children_num);
-    char *type;
     for (int i = 0; i < node->children_num; ++i) {
-        type = node->children[i]->node_type;
+        const char *type = node->children[i]->node_type;
         if (strcmp(type, "declare function") == 0) {
             print_function_tree(node->children[i], depth + 1, table);
         } else if (strcmp(type, "for statement") == 0) {

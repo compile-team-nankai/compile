@@ -3,7 +3,7 @@
 #include "ast_symbol.h"
 extern int yylex(void);
 extern void yyerror(char *str, ...);
-int yydebug = 0;
+extern int yydebug;
 %}
 
 %union{

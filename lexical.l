@@ -54,12 +54,12 @@ char                                { yylval.node = new_node("char", 0); return 
 \*=                                 { yylval.node = new_node("*=", 0); return MUL_ASSIGN; }
 \/=                                 { yylval.node = new_node("/=", 0); return DIV_ASSIGN; }
 \%=                                 { yylval.node = new_node("%=", 0); return MOD_ASSIGN; }
-[0-9]+\.[0-9]+                      { yylval.node = new_value("const: double", strdup(yytext)); return DNUM; }
-[0-9]+\.[0-9]+f                     { yylval.node = new_value("const: float", strdup(yytext)); return FNUM; }
-[0-9]+                              { yylval.node = new_value("const: int", strdup(yytext)); return INUM; }
+[0-9]+\.[0-9]+                      { yylval.node = new_value("const:double", strdup(yytext)); return DNUM; }
+[0-9]+\.[0-9]+f                     { yylval.node = new_value("const:float", strdup(yytext)); return FNUM; }
+[0-9]+                              { yylval.node = new_value("const:int", strdup(yytext)); return INUM; }
 struct[ \t\n]+[a-zA-Z][a-zA-Z0-9_]* { yylval.node = new_node(strdup(yytext), 0); return STRUCT; }
 [a-zA-Z][a-zA-Z0-9_]*               { yylval.node = new_value("id", strdup(yytext)); return ID; }
-'.'                                 { yylval.node = new_value("const: character", strdup(yytext)); return CHARACTER;}
-\"(\\.|[^"\\])*\"                   { yylval.node = new_value("const: string", strdup(yytext)); return STRING; }
+'.'                                 { yylval.node = new_value("const:char", strdup(yytext)); return CHARACTER;}
+\"(\\.|[^"\\])*\"                   { yylval.node = new_value("const:string", strdup(yytext)); return STRING; }
 [ \t\n]                             // Ignore whitespace.
 %%

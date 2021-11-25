@@ -4,15 +4,15 @@
 #include <stdio.h>
 
 typedef struct node_t {
-    char *node_type;
+    const char *node_type;
     char *value;
     int children_num;
     struct node_t **children;
 } node_t;
 
-node_t *new_node(char *node_type, int n, ...);
+node_t *new_node(const char *node_type, int n, ...);
 
-node_t *new_value(char *node_type, char *value);
+node_t *new_value(const char *node_type, char *value);
 
 node_t *merge_node(node_t *father, node_t *child);
 

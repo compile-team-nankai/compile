@@ -1,7 +1,7 @@
 #include "symbol_table.h"
 
 symbol_table_t *new_scope(symbol_table_t *father) {
-    symbol_table_t *table = malloc(sizeof(symbol_table_t));
+    symbol_table_t *table = (symbol_table_t *)malloc(sizeof(symbol_table_t));
     table->head = NULL;
     table->cur_child = 0;
     table->children_num = 0;
@@ -9,7 +9,7 @@ symbol_table_t *new_scope(symbol_table_t *father) {
     table->prev = father;
     if (father) {
         symbol_table_t **tmp = father->children;
-        father->children = malloc(sizeof(symbol_table_t *) * (father->children_num + 1));
+        father->children = (symbol_table_t **)malloc(sizeof(symbol_table_t *) * (father->children_num + 1));
         for (int i = 0; i < father->children_num; ++i) {
             father->children[i] = tmp[i];
         }
@@ -19,8 +19,8 @@ symbol_table_t *new_scope(symbol_table_t *father) {
     } else {
         symbol_t printf = {"printf"};
         symbol_t scanf = {"scanf"};
-        printf.type = malloc(sizeof(char) * strlen("(int)function"));
-        scanf.type = malloc(sizeof(char) * strlen("(int)function"));
+        printf.type = (char*)malloc(sizeof(char) * strlen("(int)function"));
+        scanf.type = (char*)malloc(sizeof(char) * strlen("(int)function"));
         strcpy(printf.type, "(int)function");
         strcpy(scanf.type, "(int)function");
         insert_symbol(table, printf);
@@ -47,7 +47,7 @@ void insert_symbol(symbol_table_t *table, symbol_t symbol) {
     symbol_table_item_t *it;
     HASH_FIND_STR(table->head, symbol.name, it);
     if (it == NULL) {
-        symbol_table_item_t *tmp = malloc(sizeof(symbol_table_item_t));
+        symbol_table_item_t *tmp = (symbol_table_item_t *)malloc(sizeof(symbol_table_item_t));
         tmp->key = symbol.name;
         tmp->symbol = symbol;
         HASH_ADD_KEYPTR(hh, table->head, symbol.name, strlen(symbol.name), tmp);
