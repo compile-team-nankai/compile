@@ -14,6 +14,9 @@ DAG::~DAG() {
             head = next;
         }
     }
+    for (auto itor = leaf_map.begin(); itor != leaf_map.end(); ++itor) {
+        delete itor->second;
+    }
 }
 
 int DAG::get_index(node_dag* new_node) {
