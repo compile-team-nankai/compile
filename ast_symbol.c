@@ -7,6 +7,7 @@ void handle_declare(node_t *declare_node, symbol_table_t *table) {
     symbol_t symbol;
     for (int i = 1; i < declare_node->children_num; ++i) {
         node_t *clause = declare_node->children[i];
+        if (strcmp(clause->node_type, "declare clause") != 0) { continue; }
         if (strcmp(clause->children[0]->node_type, "id") == 0) {
             symbol.type = strdup(type);
             symbol.name = clause->children[0]->value;

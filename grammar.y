@@ -1,6 +1,7 @@
 %{
 #include "ast.h"
 #include "ast_symbol.h"
+#include "intermediate.h"
 extern int yylex(void);
 extern void yyerror(char *str, ...);
 extern int yydebug;
@@ -38,7 +39,8 @@ extern int yydebug;
 %%
 
     root: program   { 
-        print_tree($1);
+        // print_tree($1);
+        gen_code($1);
         free_tree($1);
         }
         ;
@@ -164,7 +166,8 @@ extern int yydebug;
     declare_clause: ID                          { $$ = new_node("declare clause", 1, $1); }
         | array_declare                         { $$ = new_node("declare clause", 1, $1); }
         | pointer_declare                       { $$ = new_node("declare clause", 1, $1); }
-        | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 3, $1, $2, $3); }
+        | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 2, $1,
+                                                    new_node($2->node_type, 2, new_value("id", strdup($1->value)), $3)); }
         | pointer_declare ASSIGN expr           { $$ = new_node("declare clause", 3, $1, $2, $3); }
         | array_declare ASSIGN initialize_expr  { $$ = new_node("declare clause", 3, $1, $2, $3); }
         ;
@@ -196,8 +199,8 @@ extern int yydebug;
         | member_selection                      { $$ = new_node("expression", 1, $1); }
         | LP expr RP                            { $$ = $2; }
         | expr subscript                        { $$ = new_node("expression", 2, $1, $2); }
-        | left_unary_operator expr %prec NOT    { $$ = new_node("expression", 2 ,$1, $2); }
-        | expr right_unary_operator %prec NOT   { $$ = new_node("expression", 2 ,$1, $2); }
+        | left_unary_operator expr %prec NOT    { $$ = new_node($1->node_type, 1 ,$2); }
+        | expr right_unary_operator %prec NOT   { $$ = new_node($2->node_type, 1 ,$1); }
         | expr ADD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr SUB expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr MUL expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
@@ -237,6 +240,7 @@ extern int yydebug;
         | REF                       { $$ = $1; }
         | AUTO_INCR                 { $$ = $1; }
         | AUTO_DECR                 { $$ = $1; }
+        | SUB                       { $$ = $1; }
         ;
 
     const: INUM     { $$ = $1; }
