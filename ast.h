@@ -8,6 +8,7 @@ typedef struct node_t {
     char *value;
     int children_num;
     struct node_t **children;
+    int index;
 } node_t;
 
 node_t *new_node(const char *node_type, int n, ...);
