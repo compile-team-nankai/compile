@@ -1,10 +1,12 @@
 #ifndef COMPILE_INTERMEDIATE_H
 #define COMPILE_INTERMEDIATE_H
 
-#include "ast.h"
 #include "symbol_table.h"
 #include <unordered_map>
 #include <string>
+#include <list>
+extern "C"
+#include "ast.h"
 
 //DAG内部结点
 struct node_dag { 
@@ -27,6 +29,26 @@ struct leaf_dag {
     std::string value;//常量的值或标识符的名字
     leaf_dag(std::string type, std::string value) : type(type), value(value) {}
 };
+//三地址码
+struct address3 {
+    std::string type;
+    std::string value;
+};
+//四元式
+struct quadruple {
+    address3* op;
+    address3*arg1;
+    address3*arg2;
+    address3*result;
+    quadruple(address3* op, address3* arg1, address3* arg2, address3* result)
+        :op(op), arg1(arg1), arg2(arg2), result(result)
+        {}
+};
+//布尔表达式结点B
+struct node_bool : node_t {
+    std::list<quadruple*> true_list;
+    std::list<quadruple*> false_list;
+};
 
 class DAG {
 public:
@@ -47,6 +69,12 @@ public:
 
 void gen_3address_code(node_t *node, symbol_table_t *table, DAG* dag);
 void gen_code(node_t *root);
-
+void gen_binary_op(address3* op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
+void gen_unary_op(address3* op, address3* arg1, address3* result); //result = op arg1
+void gen_assign(address3* arg1, address3* result); // result = arg1
+void gen_goto(address3* result); // goto result
+void gen_if_goto(address3* op, address3* arg1, address3* result, bool cond=true); // if (arg1==cond) goto result
+void gen_if_relop(address3* op, address3* arg1, address3* arg2, address3* result); // if (x rel.op y) goto result
+void translate_bool_expr(node_t *node);
 
 #endif //COMPILE_INTERMEDIATE_H

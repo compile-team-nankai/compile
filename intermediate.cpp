@@ -131,3 +131,22 @@ void gen_code(node_t *root) {
     free_table(table);
     delete dag;
 }
+
+void gen_binary_op(address3* op, address3* arg1, address3* arg2, address3* result) {}
+void gen_unary_op(address3* op, address3* arg1, address3* result) {}
+void gen_assign(address3* arg1, address3* result) {}
+void gen_goto(address3* result) {}
+void gen_if_goto(address3* op, address3* arg1, address3* result, bool cond) {}
+void gen_if_relop(address3* op, address3* arg1, address3* arg2, address3* result) {}
+void translate_bool_expr(node_t *node)  {
+    if (strcmp(node->node_type, "||") == 0) {
+        // backpatch(B1.falselist, M.instr)
+        // B.truelist = merge(B1.truelist, B2.truelist)
+        // B.falselist = B2.falselist
+    }
+    else if (strcmp(node->node_type, "&&") == 0) {
+        // backpatch(B1.truelist, M.instr)
+        // B.truelist = B2.truelist
+        // B.falselist
+    }
+}
