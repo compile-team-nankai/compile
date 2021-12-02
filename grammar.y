@@ -28,7 +28,7 @@ extern int yydebug;
 %token <node> INUM FNUM DNUM ID CHARACTER STRING
 %nonassoc HIGHER_FAKE_MARK
 
-%type <node> type const left_unary_operator right_unary_operator subscript member_selection expr
+%type <node> type const left_unary_operator right_unary_operator subscript member_selection expr bool_expr
 %type <node> initialize_list initialize_expr declare_clause pointer_declare array_declare dereference declare sentence stmt stmts code_block
 %type <node> if_clause else_if_clause else_clause if_else_if_clause if_stmt
 %type <node> for_clause for_expr for_stmt while_stmt do_while_stmt
@@ -39,7 +39,7 @@ extern int yydebug;
 %%
 
     root: program   { 
-        // print_tree($1);
+        print_tree($1);
         gen_code($1);
         free_tree($1);
         }
@@ -96,19 +96,19 @@ extern int yydebug;
         | RETURN expr SEMICOLON     { $$ = new_node("return statement", 1, $2); }
         ;
 
-    do_while_stmt: DO stmt WHILE LP expr RP SEMICOLON   { $$ = new_node("do while statement", 2, $2, $5); }
-        | DO code_block WHILE LP expr RP SEMICOLON      { $$ = new_node("do while statement", 2, $2, $5); }
+    do_while_stmt: DO stmt WHILE LP bool_expr RP SEMICOLON   { $$ = new_node("do while statement", 2, $2, $5); }
+        | DO code_block WHILE LP bool_expr RP SEMICOLON      { $$ = new_node("do while statement", 2, $2, $5); }
         ;
 
-    while_stmt: WHILE LP expr RP stmt   { $$ = new_node("while statement", 2, $3, $5); }
-        | WHILE LP expr RP code_block   { $$ = new_node("while statement", 2, $3, $5); }
+    while_stmt: WHILE LP bool_expr RP stmt   { $$ = new_node("while statement", 2, $3, $5); }
+        | WHILE LP bool_expr RP code_block   { $$ = new_node("while statement", 2, $3, $5); }
         ;
 
     for_stmt: FOR LP for_expr RP code_block { $$ = new_node("for statement", 2, $3, $5); }
         | FOR LP for_expr RP stmt           { $$ = new_node("for statement", 2, $3, $5); }
         ;
 
-    for_expr: for_clause SEMICOLON expr SEMICOLON for_clause    { $$ = new_node("for expression", 3, $1, $3, $5); }
+    for_expr: for_clause SEMICOLON bool_expr SEMICOLON for_clause    { $$ = new_node("for expression", 3, $1, $3, $5); }
         ;
 
     for_clause: sentence    { $$ = $1; }
@@ -125,16 +125,16 @@ extern int yydebug;
         | if_else_if_clause else_if_clause      { $$ = merge_node($1, $2); }
         ;
 
-    else_if_clause: ELSE IF LP expr RP stmt %prec HIGHER_FAKE_MARK  { $$ = new_node("else if", 2, $4, $6); }
-        | ELSE IF LP expr RP code_block %prec HIGHER_FAKE_MARK      { $$ = new_node("else if", 2, $4, $6); }
+    else_if_clause: ELSE IF LP bool_expr RP stmt %prec HIGHER_FAKE_MARK  { $$ = new_node("else if", 2, $4, $6); }
+        | ELSE IF LP bool_expr RP code_block %prec HIGHER_FAKE_MARK      { $$ = new_node("else if", 2, $4, $6); }
         ;
 
     else_clause: ELSE stmt  { $$ = new_node("else", 1, $2); }
         | ELSE code_block   { $$ = new_node("else", 1, $2); }
         ;
 
-    if_clause: IF LP expr RP stmt %prec LOWER_FAKE_MARK     { $$ = new_node("if", 2, $3, $5); }
-        | IF LP expr RP code_block %prec LOWER_FAKE_MARK    { $$ = new_node("if", 2, $3, $5); }
+    if_clause: IF LP bool_expr RP stmt %prec LOWER_FAKE_MARK     { $$ = new_node("if", 2, $3, $5); }
+        | IF LP bool_expr RP code_block %prec LOWER_FAKE_MARK    { $$ = new_node("if", 2, $3, $5); }
         ;
 
     code_block: LCB stmts RCB { $$ = $2; $$->node_type = "code block"; }
@@ -157,6 +157,7 @@ extern int yydebug;
     sentence: expr      { $$ = $1; }
         | declare       { $$ = $1; }
         | decl_struct   { $$ = $1; }
+        | bool_expr     { $$ = $1; }
         ;
 
     declare: type declare_clause        { $$ = new_node("declare", 2, $1, $2); }
@@ -206,20 +207,24 @@ extern int yydebug;
         | expr MUL expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr DIV expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr MOD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr EQ expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr GT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr LT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr GE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr LE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr NE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr AND expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr OR expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr ADD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr SUB_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr MUL_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr DIV_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr MOD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
         | expr ASSIGN expr                      { $$ = new_node($2->node_type, 2, $1, $3); }
+        ;
+    
+    bool_expr: expr EQ expr                     { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr GT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr LT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr GE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr LE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | expr NE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+        | bool_expr AND bool_expr               { $$ = new_node_bool($2->node_type, 2, $1, $3); }
+        | bool_expr OR bool_expr                { $$ = new_node_bool($2->node_type, 2, $1, $3); }
+        | NOT bool_expr                         { $$ = new_node_bool($1->node_type, 1 ,$2); }
+        | LP bool_expr RP                       { $$ = $2; }
         ;
 
     member_selection: expr DOT ID   { $$ = new_node("member selection", 3, $1, $2, $3); }
@@ -236,8 +241,7 @@ extern int yydebug;
         | AUTO_DECR                 { $$ = $1; }
         ;
 
-    left_unary_operator: NOT        { $$ = $1; }
-        | REF                       { $$ = $1; }
+    left_unary_operator: REF        { $$ = $1; }
         | AUTO_INCR                 { $$ = $1; }
         | AUTO_DECR                 { $$ = $1; }
         | SUB                       { $$ = $1; }

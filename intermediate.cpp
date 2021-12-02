@@ -1,5 +1,8 @@
 #include "ast_symbol.h"
 #include "intermediate.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstdarg>
 
 extern FILE *ast_out;
 
@@ -132,6 +135,22 @@ void gen_code(node_t *root) {
     delete dag;
 }
 
+node_bool *new_node_bool(const char *node_type, int n, ...) {
+    node_bool *node = (node_bool*)malloc(sizeof(node_bool));
+    node->node_type = node_type;
+    node->value = NULL;
+    node->children_num = n;
+    node->children = (node_t**)malloc(sizeof(node_bool *) * n);
+    va_list ap;
+    va_start(ap, n);
+    for (int i = 0; i < n; ++i) {
+        node->children[i] = va_arg(ap, node_bool*);
+    }
+    node->true_list = new std::vector<quadruple*>(); // 暂时缺少对应delete
+    node->false_list = new std::vector<quadruple*>(); // 暂时缺少对应delete
+    return node;
+}
+
 void gen_binary_op(address3* op, address3* arg1, address3* arg2, address3* result) {}
 void gen_unary_op(address3* op, address3* arg1, address3* result) {}
 void gen_assign(address3* arg1, address3* result) {}
@@ -148,5 +167,15 @@ void translate_bool_expr(node_t *node)  {
         // backpatch(B1.truelist, M.instr)
         // B.truelist = B2.truelist
         // B.falselist
+    }
+    else if (strcmp(node->node_type, "!") == 0) {
+        //B.truelist = B1.falselist
+        //B.falselist = B1.truelist
+    }
+    else if (strcmp(node->node_type, "rel") == 0) {
+        //B.truelist = makelist(nextinstr)
+        //B.falselist = makelist(nextinstr+1)
+        //gen if E1.addr rel.op E2.addr goto_
+        //gen goto_
     }
 }

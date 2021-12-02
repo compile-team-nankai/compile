@@ -69,6 +69,7 @@ public:
 
 void gen_3address_code(node_t *node, symbol_table_t *table, DAG* dag);
 void gen_code(node_t *root);
+node_bool *new_node_bool(const char *node_type, int n, ...);
 void gen_binary_op(address3* op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
 void gen_unary_op(address3* op, address3* arg1, address3* result); //result = op arg1
 void gen_assign(address3* arg1, address3* result); // result = arg1
