@@ -4,7 +4,7 @@
 #include "symbol_table.h"
 #include <unordered_map>
 #include <string>
-#include <list>
+#include <vector>
 extern "C"
 #include "ast.h"
 
@@ -29,7 +29,7 @@ struct leaf_dag {
     std::string value;//常量的值或标识符的名字
     leaf_dag(std::string type, std::string value) : type(type), value(value) {}
 };
-//三地址码
+//地址
 struct address3 {
     std::string type;
     std::string value;
@@ -46,8 +46,8 @@ struct quadruple {
 };
 //布尔表达式结点B
 struct node_bool : node_t {
-    std::list<quadruple*> true_list;
-    std::list<quadruple*> false_list;
+    std::vector<quadruple*> *true_list;
+    std::vector<quadruple*> *false_list;
 };
 
 class DAG {
@@ -76,5 +76,8 @@ void gen_goto(address3* result); // goto result
 void gen_if_goto(address3* op, address3* arg1, address3* result, bool cond=true); // if (arg1==cond) goto result
 void gen_if_relop(address3* op, address3* arg1, address3* arg2, address3* result); // if (x rel.op y) goto result
 void translate_bool_expr(node_t *node);
+std::vector<address3*> *makelist(int i);
+void backpatch(std::vector<address3*> *instruct_list, address3* instr);
+std::vector<address3*> *merge(std::vector<address3*> *instruct_list1, std::vector<address3*> *instruct_list2);
 
 #endif //COMPILE_INTERMEDIATE_H
