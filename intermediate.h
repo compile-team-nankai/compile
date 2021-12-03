@@ -1,53 +1,67 @@
 #ifndef COMPILE_INTERMEDIATE_H
 #define COMPILE_INTERMEDIATE_H
 
-#include "symbol_table.h"
 #include <unordered_map>
 #include <string>
 #include <vector>
-extern "C"
-#include "ast.h"
+extern "C" {
+    #include "ast.h"
+    #include "symbol_table.h"
+}
+
+//地址
+struct address3 {
+    std::string type;
+    long long value;
+    address3(std::string type, long long value) : type(type), value(value) {}
+};
+
+//四元式
+struct quadruple {
+    std::string op;
+    address3* arg1;
+    address3* arg2;
+    address3* result;
+    quadruple(std::string op, address3* arg1, address3* arg2, address3* result)
+        :op(op), arg1(arg1), arg2(arg2), result(result)
+        {}
+};
+
+//表达式结点E
+struct node_expr : node_t {
+    address3* addr;
+    int index; //DAG结点标号
+};
+
+//布尔表达式结点B
+struct node_bool : node_t {
+    std::vector<int> *true_list;
+    std::vector<int> *false_list;
+    int instr;
+};
 
 //DAG内部结点
 struct node_dag { 
     int index; //标号
     std::string type;
-    int addr1;
-    int addr2;
+    int index1; //左子标号
+    int index2; //右子标号
+    address3* addr; //存储表达式值的临时变量地址
     node_dag* next;
-    node_dag(std::string type, int addr1, int addr2) //对于双目运算符，有两个字段，分别指向左右子结点
-        :type(type), addr1(addr1), addr2(addr2), next(nullptr)
+    node_dag(std::string type, int index1, int index2) //对于双目运算符，有两个字段，分别指向左右子结点
+        :index(-1), type(type), index1(index1), index2(index2), addr(nullptr), next(nullptr)
         {}
-    node_dag(std::string type, int addr1) //单目运算符只有一个子结点
-        :type(type), addr1(addr1), addr2(-1), next(nullptr)
+    node_dag(std::string type, int index1) //单目运算符只有一个子结点
+        :index(-1), type(type), index1(index1), index2(-1), addr(nullptr), next(nullptr)
         {}
 };
+
 //DAG叶子结点
 struct leaf_dag { 
     int index;
-    std::string type;
-    std::string value;//常量的值或标识符的名字
-    leaf_dag(std::string type, std::string value) : type(type), value(value) {}
-};
-//地址
-struct address3 {
-    std::string type;
-    std::string value;
-};
-//四元式
-struct quadruple {
-    address3* op;
-    address3*arg1;
-    address3*arg2;
-    address3*result;
-    quadruple(address3* op, address3* arg1, address3* arg2, address3* result)
-        :op(op), arg1(arg1), arg2(arg2), result(result)
-        {}
-};
-//布尔表达式结点B
-struct node_bool : node_t {
-    std::vector<quadruple*> *true_list;
-    std::vector<quadruple*> *false_list;
+    address3* addr;
+    leaf_dag() : index(-1), addr(nullptr) {}
+    leaf_dag(address3* addr) : index(-1), addr(addr) {}
 };
 
 class DAG {
@@ -55,8 +69,8 @@ public:
     ~DAG();
     DAG() : index_cur(0), line_number(0) {}
     DAG(int offset) : index_cur(offset), line_number(0)  {}
-    int get_index(node_dag* new_node);
-    int get_index(leaf_dag* new_leaf);
+    bool try_get_expr(node_expr* e, node_dag* new_node);
+    bool try_get_expr(node_expr* e, std::string type, long long value);
     static bool is_node_equal(node_dag* a, node_dag* b);
     void print_dag_node(node_dag* node);
     void print_dag_leaf(leaf_dag* leaf);
@@ -67,18 +81,30 @@ public:
     std::unordered_map<std::string, leaf_dag*> leaf_map; // 叶子结点的哈希表存储单个叶子节点
 };
 
-void gen_3address_code(node_t *node, symbol_table_t *table, DAG* dag);
+void tranverse_tree(node_t *node, symbol_table_t *table, DAG* dag);
 void gen_code(node_t *root);
+void print_quadruples();
+void print_address3(address3 *address);
 node_bool *new_node_bool(const char *node_type, int n, ...);
-void gen_binary_op(address3* op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
-void gen_unary_op(address3* op, address3* arg1, address3* result); //result = op arg1
+node_expr *new_node_expr(const char *node_type, int n, ...);
+void gen_binary_op(std::string op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
+void gen_unary_op(std::string op, address3* arg1, address3* result); //result = op arg1
 void gen_assign(address3* arg1, address3* result); // result = arg1
 void gen_goto(address3* result); // goto result
-void gen_if_goto(address3* op, address3* arg1, address3* result, bool cond=true); // if (arg1==cond) goto result
-void gen_if_relop(address3* op, address3* arg1, address3* arg2, address3* result); // if (x rel.op y) goto result
+void gen_if_goto(address3* arg1, address3* result, bool cond=true); // if (arg1==cond) goto result
+void gen_if_relop(address3* arg1, address3* arg2, address3* result); // if (arg1 rel.op arg2) goto result
 void translate_bool_expr(node_t *node);
-std::vector<address3*> *makelist(int i);
-void backpatch(std::vector<address3*> *instruct_list, address3* instr);
-std::vector<address3*> *merge(std::vector<address3*> *instruct_list1, std::vector<address3*> *instruct_list2);
+std::vector<int> *makelist(int i);
+void backpatch(std::vector<int> *instruct_list, int instr);
+std::vector<int> *merge(std::vector<int> *instruct_list1, std::vector<int> *instruct_list2);
+address3 *new_address3(std::string type, long long value);
+address3 *new_address3(std::string type, const char* value);
+address3 *new_address3_number(long long number);
+address3 *new_address3_number(const char* number);
+address3 *new_address3_address(long long address);
+address3 *new_address3_address(const char* address);
+address3 *new_temp();
+void free_address3_pool();
+void free_quadruples_array();
 
 #endif //COMPILE_INTERMEDIATE_H

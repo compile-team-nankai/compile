@@ -41,7 +41,10 @@ extern int yydebug;
     root: program   { 
         print_tree($1);
         gen_code($1);
+        print_quadruples();
         free_tree($1);
+        free_address3_pool();
+        free_quadruples_array();
         }
         ;
 
@@ -168,7 +171,7 @@ extern int yydebug;
         | array_declare                         { $$ = new_node("declare clause", 1, $1); }
         | pointer_declare                       { $$ = new_node("declare clause", 1, $1); }
         | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 2, $1,
-                                                    new_node($2->node_type, 2, new_value("id", strdup($1->value)), $3)); }
+                                                    new_node($2->node_type, 2, new_node_expr("expr_id", 1, new_value("id", strdup($1->value))), $3)); }
         | pointer_declare ASSIGN expr           { $$ = new_node("declare clause", 3, $1, $2, $3); }
         | array_declare ASSIGN initialize_expr  { $$ = new_node("declare clause", 3, $1, $2, $3); }
         ;
@@ -193,34 +196,34 @@ extern int yydebug;
         | initialize_list COMMA initialize_expr { $$ = merge_node($1, $3); }
         ;
 
-    expr: const                                 { $$ = $1; }
-        | ID                                    { $$ = $1; }
+    expr: const                                 { $$ = new_node_expr("expr_const", 1, $1); }
+        | ID                                    { $$ = new_node_expr("expr_id", 1, $1); }
         | call_func                             { $$ = new_node("expression", 1, $1); }
         | dereference                           { $$ = new_node("expression", 1, $1); }
         | member_selection                      { $$ = new_node("expression", 1, $1); }
         | LP expr RP                            { $$ = $2; }
         | expr subscript                        { $$ = new_node("expression", 2, $1, $2); }
-        | left_unary_operator expr %prec NOT    { $$ = new_node($1->node_type, 1 ,$2); }
-        | expr right_unary_operator %prec NOT   { $$ = new_node($2->node_type, 1 ,$1); }
-        | expr ADD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr SUB expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr MUL expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr DIV expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr MOD expr                         { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr ADD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr SUB_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr MUL_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr DIV_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr MOD_ASSIGN expr                  { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr ASSIGN expr                      { $$ = new_node($2->node_type, 2, $1, $3); }
+        | left_unary_operator expr %prec NOT    { $$ = new_node_expr($1->node_type, 1 ,$2); }
+        | expr right_unary_operator %prec NOT   { $$ = new_node_expr($2->node_type, 1 ,$1); }
+        | expr ADD expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr SUB expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr MUL expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr DIV expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr MOD expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr ADD_ASSIGN expr                  { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr SUB_ASSIGN expr                  { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr MUL_ASSIGN expr                  { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr DIV_ASSIGN expr                  { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr MOD_ASSIGN expr                  { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr ASSIGN expr                      { $$ = new_node_expr($2->node_type, 2, $1, $3); }
         ;
     
-    bool_expr: expr EQ expr                     { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr GT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr LT expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr GE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr LE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
-        | expr NE expr                          { $$ = new_node($2->node_type, 2, $1, $3); }
+    bool_expr: expr EQ expr                     { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr GT expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr LT expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr GE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr LE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
+        | expr NE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
         | bool_expr AND bool_expr               { $$ = new_node_bool($2->node_type, 2, $1, $3); }
         | bool_expr OR bool_expr                { $$ = new_node_bool($2->node_type, 2, $1, $3); }
         | NOT bool_expr                         { $$ = new_node_bool($1->node_type, 1 ,$2); }
@@ -244,7 +247,7 @@ extern int yydebug;
     left_unary_operator: REF        { $$ = $1; }
         | AUTO_INCR                 { $$ = $1; }
         | AUTO_DECR                 { $$ = $1; }
-        | SUB                       { $$ = $1; }
+        | SUB                       { $$ = new_node_expr("minus", 1, $1); }
         ;
 
     const: INUM     { $$ = $1; }
