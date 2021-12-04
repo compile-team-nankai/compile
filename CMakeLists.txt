@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.20)
-project(Compile)
+project(Compile CXX C)
 
 set(CMAKE_C_STANDARD 99)
+
+set(CMAKE_CXX_STANDARD 11)
 
 add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/l.c ${CMAKE_SOURCE_DIR}/y.c
         COMMAND flex -o l.c lexical.l
         COMMAND bison -ydvo y.c --debug grammar.y
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-add_executable(exe y.c l.c ast.c symbol_table.c main.c ast_symbol.c)
+add_executable(exe y.c l.c ast.c symbol_table.c main.c ast_symbol.c intermediate.cpp)
 
 add_custom_command(TARGET exe
         POST_BUILD

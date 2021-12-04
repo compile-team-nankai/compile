@@ -1,10 +1,15 @@
 %{
 #include "ast.h"
 #include "ast_symbol.h"
-#include "intermediate.h"
 extern int yylex(void);
 extern void yyerror(char *str, ...);
 extern int yydebug;
+extern void gen_code(node_t *root);
+extern void print_quadruples();
+extern void free_address3_pool();
+extern void free_quadruples_array();
+extern node_t *new_node_expr(const char *node_type, int n, ...);
+extern node_t *new_node_bool(const char *node_type, int n, ...);
 %}
 
 %union{
