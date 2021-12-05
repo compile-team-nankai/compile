@@ -10,6 +10,8 @@ extern "C" {
 #include "symbol_table.h"
 }
 
+enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, NotDefined };
+
 //地址
 struct address3 {
     std::string type;
@@ -39,7 +41,15 @@ struct node_expr : node_t {
 struct node_bool : node_t {
     std::vector<int> *true_list;
     std::vector<int> *false_list;
+};
+
+//控制流标记结点M
+struct node_sign_m : node_t {
     int instr;
+};
+
+struct node_flow : node_t {
+    std::vector<int> *next_list;
 };
 
 //DAG内部结点
@@ -96,28 +106,29 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag);
 
 extern "C" {
 void gen_code(node_t *root);
-void print_quadruples();
-void free_address3_pool();
-void free_quadruples_array();
+void print_quadruple_array();
+void free_intermediate_structures();
 node_t *new_node_bool(char *node_type, int n, ...);
 node_t *new_node_expr(char *node_type, int n, ...);
+node_t *new_node_sign_m(char *node_type);
+node_t *new_node_flow(char *node_type, int n, ...);
 }
 
 void print_address3(address3 *address);
-
-void gen_binary_op(std::string op, address3 *arg1, address3 *arg2, address3 *result); //result = arg1 op arg2
-void gen_unary_op(std::string op, address3 *arg1, address3 *result); //result = op arg1
-void gen_assign(address3 *arg1, address3 *result); // result = arg1
-void gen_goto(address3 *result); // goto result
-void gen_if_goto(address3 *arg1, address3 *result, bool cond = true); // if (arg1==cond) goto result
-void gen_if_relop(address3 *arg1, address3 *arg2, address3 *result); // if (arg1 rel.op arg2) goto result
-void translate_bool_expr(node_t *node);
+void print_quadruple(quadruple *p);
+void gen_binary_op(std::string op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
+void gen_unary_op(std::string op, address3* arg1, address3* result); //result = op arg1
+void gen_assign(address3* arg1, address3* result); // result = arg1
+void gen_goto(address3* result); // goto result
+void gen_if_goto(address3* arg1, address3* result); // if (arg1 == true) goto result
+void gen_if_relop(std::string op, address3* arg1, address3* arg2, address3* result); // if (arg1 rel.op arg2) goto result
+QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);
 
-void backpatch(std::vector<int> *instruct_list, int instr);
+void backpatch(std::vector<int> *arr, int instr);
 
-std::vector<int> *merge(std::vector<int> *instruct_list1, std::vector<int> *instruct_list2);
+std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2);
 
 address3 *new_address3(std::string type, long long value);
 
@@ -132,5 +143,11 @@ address3 *new_address3_address(long long address);
 address3 *new_address3_address(const char *address);
 
 address3 *new_temp();
+
+int get_nextinstr();
+
+void free_address3_pool();
+void free_quadruples_array();
+void free_bool_list_pool();
 
 #endif //COMPILE_INTERMEDIATE_H

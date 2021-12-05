@@ -5,11 +5,12 @@ extern int yylex(void);
 extern void yyerror(char *str, ...);
 extern int yydebug;
 extern void gen_code(node_t *root);
-extern void print_quadruples();
-extern void free_address3_pool();
-extern void free_quadruples_array();
+extern void print_quadruple_array();
+extern void free_intermediate_structures();
 extern node_t *new_node_expr(const char *node_type, int n, ...);
 extern node_t *new_node_bool(const char *node_type, int n, ...);
+extern node_t *new_node_sign_m(char *node_type);
+extern node_t *new_node_flow(const char *node_type, int n, ...);
 %}
 
 %union{
@@ -33,7 +34,7 @@ extern node_t *new_node_bool(const char *node_type, int n, ...);
 %token <node> INUM FNUM DNUM ID CHARACTER STRING
 %nonassoc HIGHER_FAKE_MARK
 
-%type <node> type const left_unary_operator right_unary_operator subscript member_selection expr bool_expr
+%type <node> type const left_unary_operator right_unary_operator subscript member_selection expr bool_expr sign_m
 %type <node> initialize_list initialize_expr declare_clause pointer_declare array_declare dereference declare sentence stmt stmts code_block
 %type <node> if_clause else_if_clause else_clause if_else_if_clause if_stmt
 %type <node> for_clause for_expr for_stmt while_stmt do_while_stmt
@@ -46,10 +47,9 @@ extern node_t *new_node_bool(const char *node_type, int n, ...);
     root: program   { 
         print_tree($1);
         gen_code($1);
-        print_quadruples();
+        print_quadruple_array();
         free_tree($1);
-        free_address3_pool();
-        free_quadruples_array();
+        free_intermediate_structures();
         }
         ;
 
@@ -229,10 +229,13 @@ extern node_t *new_node_bool(const char *node_type, int n, ...);
         | expr GE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
         | expr LE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
         | expr NE expr                          { $$ = new_node_expr($2->node_type, 2, $1, $3); }
-        | bool_expr AND bool_expr               { $$ = new_node_bool($2->node_type, 2, $1, $3); }
-        | bool_expr OR bool_expr                { $$ = new_node_bool($2->node_type, 2, $1, $3); }
+        | bool_expr AND sign_m bool_expr        { $$ = new_node_bool($2->node_type, 3, $1, $3, $4); }
+        | bool_expr OR sign_m bool_expr         { $$ = new_node_bool($2->node_type, 3, $1, $3, $4); }
         | NOT bool_expr                         { $$ = new_node_bool($1->node_type, 1 ,$2); }
         | LP bool_expr RP                       { $$ = $2; }
+        ;
+    
+    sign_m:                                     { $$ = new_node_sign_m("sign_m"); }
         ;
 
     member_selection: expr DOT ID   { $$ = new_node("member selection", 3, $1, $2, $3); }

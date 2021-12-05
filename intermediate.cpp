@@ -8,9 +8,9 @@ extern "C" {
 }
 
 extern FILE *ast_out;
-int nextinstr = 0;
 std::vector<quadruple *> quadruple_array;
 std::vector<address3 *> address3_pool;
+std::vector<std::vector<int> *> bool_list_pool;
 long long temp_count = 0;
 
 DAG::~DAG() {
@@ -111,6 +111,9 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     node_expr *e = (node_expr *) node;
     node_expr *e1 = node->children_num > 0 ? (node_expr *) node->children[0] : nullptr;
     node_expr *e2 = node->children_num > 1 ? (node_expr *) node->children[1] : nullptr;
+    node_bool *b = (node_bool *)node;
+    node_bool *b1 = node->children_num > 0 ? (node_bool *) node->children[0] : nullptr;
+    node_bool *b2 = node->children_num > 2 ? (node_bool *) node->children[2] : nullptr;
     //遍历子结点
     for (int i = 0; i < node->children_num; ++i) {
         if (strcmp(node->children[i]->node_type, "code block") == 0) {
@@ -141,6 +144,31 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         if (!dag->try_get_expr(e, new node_dag("minus", e1->index))) {
             gen_unary_op(type, e1->addr, e->addr);
         }
+    } else if (strcmp(type, "sign_m") == 0) { //控制标记M
+        ((node_sign_m *)node)->instr = get_nextinstr();
+    } else if (strcmp(type, "||") == 0) { //逻辑或
+        node_sign_m *m = (node_sign_m *)node->children[1];
+        backpatch(b1->false_list, m->instr);
+        b->true_list = merge(b1->true_list, b2->true_list);
+        b->false_list = b2->false_list;
+    } else if (strcmp(type, "&&") == 0) { //逻辑与
+        node_sign_m *m = (node_sign_m *)node->children[1];
+        backpatch(b1->true_list, m->instr);
+        b->true_list = b2->true_list;
+        b->false_list = merge(b1->false_list, b2->false_list);
+    } else if (strcmp(type, "!") == 0) { //逻辑非
+        b->true_list = b1->false_list;
+        b->false_list = b1->true_list;
+    } else if (strcmp(type, "==") == 0 ||
+               strcmp(type, "!=") == 0 ||
+               strcmp(type, ">") == 0 ||
+               strcmp(type, "<") == 0 ||
+               strcmp(type, ">=") == 0 ||
+               strcmp(type, "<=") == 0) {  //关系运算符
+        b->true_list = makelist(get_nextinstr());
+        b->false_list = makelist(get_nextinstr() + 1);
+        gen_if_relop(type, e1->addr, e2->addr, nullptr); //gen if E1.addr rel.op E2.addr goto_
+        gen_goto(nullptr); // gen goto_
     }
 }
 
@@ -152,13 +180,44 @@ void gen_code(node_t *root) {
     delete dag;
 }
 
-void print_quadruples() {
+void print_quadruple(quadruple *p) {
+    QuadrupleType type = get_quadruple_type(p->op);
+    if (type == QuadrupleType::BinaryOp ||
+        type == QuadrupleType::UnaryOp ||
+        type == QuadrupleType::Assign) {
+        printf("%s ", p->op.c_str());
+        print_address3(p->arg1);
+        print_address3(p->arg2);
+        print_address3(p->result);
+    } else if (type == QuadrupleType::Goto) {
+        printf("goto ");
+        if (p->result != nullptr) {
+            printf("%lld", p->result->value);
+        }
+    } else if (type == QuadrupleType::IfGoto) {
+        printf("if ");
+        print_address3(p->arg1);
+        printf(" == true goto ");
+        if (p->result != nullptr) {
+            printf("%lld", p->result->value);
+        }
+    } else if (type == QuadrupleType::IfRelop) {
+        printf("if ");
+        print_address3(p->arg1);
+        printf("%s ", p->op.c_str());
+        print_address3(p->arg2);
+        printf(" goto ");
+        if (p->result != nullptr) {
+            printf("%lld", p->result->value);
+        }
+    }
+    printf("\n");
+}
+
+void print_quadruple_array() {
     for (size_t i = 0; i < quadruple_array.size(); ++i) {
-        printf("%s ", quadruple_array[i]->op.c_str());
-        print_address3(quadruple_array[i]->arg1);
-        print_address3(quadruple_array[i]->arg2);
-        print_address3(quadruple_array[i]->result);
-        printf("\n");
+        printf("%4ld: ", i);
+        print_quadruple(quadruple_array[i]);
     }
 }
 
@@ -177,7 +236,6 @@ node_t *new_node_bool(char *node_type, int n, ...) {
     node->children = (node_t **) malloc(sizeof(node_t *) * n);
     node->true_list = nullptr;
     node->false_list = nullptr;
-    node->instr = -1;
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; ++i) {
@@ -201,7 +259,32 @@ node_t *new_node_expr(char *node_type, int n, ...) {
     return node;
 }
 
-void gen_binary_op(std::string op, address3 *arg1, address3 *arg2, address3 *result) {
+node_t *new_node_sign_m(char *node_type) {
+    node_sign_m *node = (node_sign_m*)malloc(sizeof(node_sign_m));
+    node->node_type = node_type;
+    node->value = NULL;
+    node->children_num = 0;
+    node->children = NULL;
+    node->instr = -1;
+    return node;
+}
+
+node_t *new_node_flow(char *node_type, int n, ...) {
+    node_flow *node = (node_flow*)malloc(sizeof(node_flow));
+    node->node_type = node_type;
+    node->value = NULL;
+    node->children_num = n;
+    node->children = (node_t **) malloc(sizeof(node_t *) * n);
+    node->next_list = nullptr;
+    va_list ap;
+    va_start(ap, n);
+    for (int i = 0; i < n; ++i) {
+        node->children[i] = va_arg(ap, node_t*);
+    }
+    return node;
+}
+
+void gen_binary_op(std::string op, address3* arg1, address3* arg2, address3* result) {
     quadruple_array.push_back(new quadruple(op, arg1, arg2, result));
 }
 
@@ -217,48 +300,60 @@ void gen_goto(address3 *result) {
     quadruple_array.push_back(new quadruple("goto", nullptr, nullptr, result));
 }
 
-void gen_if_goto(address3 *arg1, address3 *result, bool cond) {
+void gen_if_goto(address3 *arg1, address3 *result) {
     quadruple_array.push_back(new quadruple("if_goto", arg1, nullptr, result));
 }
 
-void gen_if_relop(address3 *arg1, address3 *arg2, address3 *result) {
-    quadruple_array.push_back(new quadruple("if_relop", arg1, arg2, result));
+void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result) {
+    quadruple_array.push_back(new quadruple(op, arg1, arg2, result));
 }
 
-/*void translate_bool_expr(node_bool *node)  {
-    node_bool* b1 = (node_bool*)node->children[0];
-    node_bool* b2 = (strcmp(node->node_type, "&&")==0 || strcmp(node->node_type, "||")==0) ? (node_bool*)node->children[1] : nullptr;
-    if (strcmp(node->node_type, "||") == 0) {
-        // backpatch(B1.falselist, M.instr)
-        backpatch(b1->false_list, node->instr);
-        // B.truelist = merge(B1.truelist, B2.truelist)
-        node->true_list = merge(b1->true_list, b2->false_list);
-        // B.falselist = B2.falselist
-        node->false_list->assign(b2->false_list->begin(), b2->false_list->end());
+QuadrupleType get_quadruple_type(std::string op) {
+    if (op == "+" ||
+        op == "-" ||
+        op == "*" ||
+        op == "/" ||
+        op == "%") {
+        return QuadrupleType::BinaryOp;
+    } else if (op == "minus") {
+        return QuadrupleType::UnaryOp;
+    } else if (op == "assign") {
+        return QuadrupleType::Assign;
+    } else if (op == "goto") {
+        return QuadrupleType::Goto;
+    } else if (op == "if_goto") {
+        return QuadrupleType::IfGoto;
+    } else if (op == "==" ||
+               op == "!=" ||
+               op == ">" ||
+               op == "<" ||
+               op == ">=" ||
+               op == "<=") {
+        return QuadrupleType::IfRelop;
     }
-    else if (strcmp(node->node_type, "&&") == 0) {
-        // backpatch(B1.truelist, M.instr)
-        backpatch(b1->false_list, node->instr);
-        // B.truelist = B2.truelist
-        node->true_list->assign(b2->true_list->begin(), b2->true_list->end());
-        // B.falselist = merge(B1.falselist, B2.falselist)
-        node->false_list = merge(b1->false_list, b2->false_list);
+    return QuadrupleType::NotDefined;
+}
+
+std::vector<int> *makelist(int i) {
+    std::vector<int> *p = new std::vector<int>();
+    p->push_back(i);
+    bool_list_pool.push_back(p);
+    return p;
+}
+
+void backpatch(std::vector<int> *arr, int instr) {
+    if (arr == nullptr) { return; }
+    for (auto index : *arr) {
+        quadruple_array[index]->result = new_address3_number(instr);
     }
-    else if (strcmp(node->node_type, "!") == 0) {
-        //B.truelist = B1.falselist
-        node->true_list = b1->false_list;
-        //B.falselist = B1.truelist
-        node->false_list = b1->true_list;
-    }
-    else if (strcmp(node->node_type, "rel") == 0) {
-        //B.truelist = makelist(nextinstr)
-        node->true_list = makelist(nextinstr);
-        //B.falselist = makelist(nextinstr+1)
-        node->false_list = makelist(nextinstr + 1);
-        //gen if E1.addr rel.op E2.addr goto_
-        //gen goto_
-    }
-}*/
+}
+
+std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2) {
+    std::vector<int> *p = new std::vector<int>(*arr1);
+    p->insert(p->end(), arr2->begin(), arr2->end());
+    bool_list_pool.push_back(p);
+    return p;
+}
 
 address3 *new_address3(std::string type, long long value) {
     address3 *p = new address3(type, value);
@@ -293,6 +388,10 @@ address3 *new_temp() {
     return new_address3_address(temp_count);
 }
 
+int get_nextinstr() {
+    return quadruple_array.size();
+}
+
 void free_address3_pool() {
     for (auto itor = address3_pool.begin(); itor != address3_pool.end(); ++itor) {
         delete *itor;
@@ -303,4 +402,16 @@ void free_quadruples_array() {
     for (auto itor = quadruple_array.begin(); itor != quadruple_array.end(); ++itor) {
         delete *itor;
     }
+}
+
+void free_bool_list_pool() {
+    for (auto itor = bool_list_pool.begin(); itor != bool_list_pool.end(); ++itor) {
+        delete *itor;
+    }
+}
+
+void free_intermediate_structures() {
+    free_address3_pool();
+    free_quadruples_array();
+    free_bool_list_pool();
 }
