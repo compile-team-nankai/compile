@@ -114,6 +114,7 @@ node_t *new_node_expr(char *node_type, int n, ...);
 node_t *new_node_sign_m();
 node_t *new_node_flow(char *node_type, int n, ...);
 node_t *new_node_sign_n();
+void print_raw_tree(node_t *node, int depth);
 }
 
 void print_address3(address3 *address);

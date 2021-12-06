@@ -208,6 +208,19 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     } else if (strcmp(type, "return statement") == 0) { // return
         if(node->children_num == 0) { gen_return(nullptr); }
         else { gen_return(e1->addr); }
+    } else if (strcmp(type, "for statement") == 0) {
+        node_bool *for_b = (node_bool *)node->children[2];
+        node_flow *for_s = (node_flow *)node->children[7];
+        node_sign_m *m1 = (node_sign_m *)node->children[1];
+        node_sign_m *m2 = (node_sign_m *)node->children[3];
+        node_sign_m *m3 = (node_sign_m *)node->children[6];
+        node_flow *n1 = (node_flow *)node->children[5];
+        backpatch(for_b->true_list, m3->instr);
+        backpatch(for_s->next_list, m2->instr);
+        backpatch(n1->next_list, m1->instr);
+        s->next_list = for_b->false_list;
+        address3 *m2_instr = new address3("", m2->instr);
+        gen_goto(m2_instr);
     }
 }
 
@@ -338,6 +351,20 @@ node_t *new_node_flow(char *node_type, int n, ...) {
 
 node_t *new_node_sign_n() {
     return new_node_flow((char *)"sign_n", 0);
+}
+
+void print_raw_tree(node_t *node, int depth) {
+    for (int i = 0; i < depth; ++i) {
+        fprintf(ast_out, "| ");
+    }
+    printf("|-(%s) %d", node->node_type, node->children_num);
+    if (strncmp(node->node_type, "const", 5) == 0 || strcmp(node->node_type, "id") == 0) {
+        printf(" [%s]", node->value);
+    }
+    printf("\n");
+    for (int i = 0; i < node->children_num; ++i) {
+        print_raw_tree(node->children[i], depth + 1);
+    }
 }
 
 void gen_binary_op(std::string op, address3* arg1, address3* arg2, address3* result) {

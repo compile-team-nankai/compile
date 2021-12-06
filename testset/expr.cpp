@@ -21,6 +21,9 @@ int main() {
         a=9;
     } else {
         a=10;
+    } 
+    for (int i = 0; i < 5; i = i + 1) {
+        int k = 10;
     }
     return 0;
 }

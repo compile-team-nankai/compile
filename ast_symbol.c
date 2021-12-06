@@ -63,11 +63,16 @@ void handle_function_declare(node_t *function_node, symbol_table_t *table) {
 
 void handle_for_statement(node_t *for_node, symbol_table_t *father) {
     symbol_table_t *table = new_scope(father);
-    node_t *first_expr = for_node->children[0]->children[0];
+    node_t *first_expr = for_node->children_num < 6 ? for_node->children[0]->children[0] : for_node->children[0];
     if (strcmp(first_expr->node_type, "declare") == 0) {
         handle_declare(first_expr, table);
     }
-    handle_node(for_node->children[1], table);
+    if (for_node->children_num < 6) {
+        handle_node(for_node->children[1], table);
+    }
+    else {
+        handle_node(for_node->children[7], table);
+    }
 }
 
 void handle_node(node_t *node, symbol_table_t *table) {
