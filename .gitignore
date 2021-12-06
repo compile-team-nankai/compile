@@ -5,3 +5,4 @@ cmake-build-debug
 exe
 y.output
 build
+gencode

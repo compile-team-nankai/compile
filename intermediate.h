@@ -10,11 +10,11 @@ extern "C" {
 #include "symbol_table.h"
 }
 
-enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, NotDefined };
+enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, Return, NotDefined };
 
 //地址
 struct address3 {
-    std::string type;
+    std::string type; // num|address
     long long value;
 
     address3(std::string type, long long value) : type(type), value(value) {}
@@ -110,8 +110,9 @@ void print_quadruple_array();
 void free_intermediate_structures();
 node_t *new_node_bool(char *node_type, int n, ...);
 node_t *new_node_expr(char *node_type, int n, ...);
-node_t *new_node_sign_m(char *node_type);
+node_t *new_node_sign_m();
 node_t *new_node_flow(char *node_type, int n, ...);
+node_t *new_node_sign_n();
 }
 
 void print_address3(address3 *address);
@@ -119,9 +120,11 @@ void print_quadruple(quadruple *p);
 void gen_binary_op(std::string op, address3* arg1, address3* arg2, address3* result); //result = arg1 op arg2
 void gen_unary_op(std::string op, address3* arg1, address3* result); //result = op arg1
 void gen_assign(address3* arg1, address3* result); // result = arg1
-void gen_goto(address3* result); // goto result
+void gen_goto(address3* result); // goto result(num)
+void gen_goto(int result); // goto result(num)
 void gen_if_goto(address3* arg1, address3* result); // if (arg1 == true) goto result
 void gen_if_relop(std::string op, address3* arg1, address3* arg2, address3* result); // if (arg1 rel.op arg2) goto result
+void gen_return(address3* result);
 QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);
