@@ -208,7 +208,7 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     } else if (strcmp(type, "return statement") == 0) { // return
         if(node->children_num == 0) { gen_return(nullptr); }
         else { gen_return(e1->addr); }
-    } else if (strcmp(type, "for statement") == 0) {
+    } else if (strcmp(type, "for statement") == 0) { // for
         node_bool *for_b = (node_bool *)node->children[2];
         node_flow *for_s = (node_flow *)node->children[7];
         node_sign_m *m1 = (node_sign_m *)node->children[1];
@@ -221,6 +221,23 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         s->next_list = for_b->false_list;
         address3 *m2_instr = new address3("", m2->instr);
         gen_goto(m2_instr);
+    } else if(strcmp(type, "while statement") == 0) { // while
+        b = (node_bool *)s->children[1];
+        node_sign_m *m1 = (node_sign_m *)s->children[0];
+        node_sign_m *m2 = (node_sign_m *)s->children[2];
+        node_flow *s1 = (node_flow *)s->children[3];
+        backpatch(s1->next_list, m1->instr);
+        backpatch(b->true_list, m2->instr);
+        s->next_list = b->false_list;
+        gen_goto(m1->instr);
+    } else if(strcmp(type, "do while statement") == 0) { // do while
+        b = (node_bool *)s->children[3];
+        node_sign_m *m1 = (node_sign_m *)s->children[0];
+        node_sign_m *m2 = (node_sign_m *)s->children[2];
+        node_flow *s1 = (node_flow *)s->children[1];
+        backpatch(s1->next_list, m2->instr);
+        backpatch(b->true_list, m1->instr);
+        s->next_list = b->false_list;
     }
 }
 

@@ -105,7 +105,7 @@ void print_raw_tree(node_t *node, int depth);
         | RETURN expr SEMICOLON     { $$ = new_node_flow("return statement", 1, $2); }
         ;
 
-    do_while_stmt: DO stmt WHILE LP bool_expr RP SEMICOLON   { $$ = new_node_flow("do while statement", 2, $2, $5); }
+    do_while_stmt: DO stmt WHILE LP bool_expr RP SEMICOLON   { $$ = new_node_flow("do while statement", 4, new_node_sign_m(), $2, new_node_sign_m(), $5); }
         ;
 
     while_stmt: WHILE LP bool_expr RP stmt   { $$ = new_node_flow("while statement", 4, new_node_sign_m(), $3, new_node_sign_m(), $5); }
