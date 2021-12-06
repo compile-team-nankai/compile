@@ -132,6 +132,7 @@ extern node_t *new_node_sign_n();
     code_block: LCB stmts RCB { $$ = new_node_flow("code block", 1, $2); }
         | LCB RCB             { $$ = new_node_flow("code block", 0); }
         ;
+    
     stmt: open_stmt             { $$ = $1; }
         | matched_stmt          { $$ = $1; }
         ;

@@ -70,7 +70,7 @@ bool DAG::try_get_expr(node_expr *e, std::string type, long long value) {
             addr = e->addr = new_temp();
             gen_assign(new_address3_number(value), e->addr);
         } else {
-            addr = e->addr = new_address3_address(value);
+            addr = e->addr = new_temp();
         }
         leaf_dag *new_leaf = new leaf_dag(addr);
         new_leaf->index = index = ++index_cur;
@@ -211,9 +211,22 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     }
 }
 
+void get_const_pool(node_t *node, DAG *dag) {
+    const char *type = node->node_type;
+    for (int i = 0; i < node->children_num; ++i) {
+        get_const_pool(node->children[i], dag);
+    }
+    if (strcmp(type, "expr_const") == 0) { //常量
+        node_expr *e = (node_expr *)node;
+        node_expr *e1 = (node_expr *) node->children[0];
+        dag->try_get_expr(e, "expr_const", atoll(e1->value));
+    }
+}
+
 void gen_code(node_t *root) {
     symbol_table_t *table = generate_symbol_table(root);
     DAG *dag = new DAG();
+    get_const_pool(root, dag);
     tranverse_tree(root, table, dag);
     free_table(table);
     delete dag;
@@ -263,9 +276,8 @@ void print_quadruple_array() {
 
 void print_address3(address3 *address) {
     if (address == nullptr) { return; }
-    if (address->type == "num") { printf("#"); }
-    else { printf("$"); }
-    printf("%lld ", address->value);
+    if (address->type == "num") { printf("#%lld ", address->value); }
+    else { printf("$%lld ", address->value); }
 }
 
 node_t *new_node_bool(char *node_type, int n, ...) {

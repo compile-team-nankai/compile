@@ -103,6 +103,7 @@ public:
 };
 
 void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag);
+void get_const_pool(node_t *node, DAG *dag);
 
 extern "C" {
 void gen_code(node_t *root);
