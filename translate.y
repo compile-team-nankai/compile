@@ -1,11 +1,14 @@
 %{
 #include "ast.h"
 #include "ast_symbol.h"
+#include "symbol_table.h"
 extern int yylex(void);
+extern int yylineno;
 extern void yyerror(char *str, ...);
 extern int yydebug;
 extern void gen_code(node_t *root);
 extern void print_quadruple_array();
+extern void print_type_warning();
 extern void free_intermediate_structures();
 extern node_t *new_node_expr(const char *node_type, int n, ...);
 extern node_t *new_node_bool(const char *node_type, int n, ...);
@@ -49,6 +52,8 @@ void print_raw_tree(node_t *node, int depth);
         print_raw_tree($1, 0);
         gen_code($1);
         print_quadruple_array();
+        print_type_warning();
+        print_error();
         free_tree($1);
         free_intermediate_structures();
         }
@@ -159,7 +164,7 @@ void print_raw_tree(node_t *node, int depth);
         | bool_expr     { $$ = $1; }
         ;
 
-    declare: type declare_clause        { $$ = new_node("declare", 2, $1, $2); }
+    declare: type declare_clause        { $$ = new_node("declare", 3, $1, $2,yylineno); }
         | declare COMMA declare_clause  { $$ = merge_node($1, $3); }
         ;
 
@@ -167,7 +172,7 @@ void print_raw_tree(node_t *node, int depth);
         | array_declare                         { $$ = new_node("declare clause", 1, $1); }
         | pointer_declare                       { $$ = new_node("declare clause", 1, $1); }
         | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 2, $1,
-                                                    new_node($2->node_type, 2, new_node_expr("expr_id", 1, new_value("id", strdup($1->value))), $3)); }
+                                                    new_node($2->node_type, 2, new_node_expr("expr_id", 2, new_value("id", strdup($1->value)),yylineno), $3)); }
         | pointer_declare ASSIGN expr           { $$ = new_node("declare clause", 3, $1, $2, $3); }
         | array_declare ASSIGN initialize_expr  { $$ = new_node("declare clause", 3, $1, $2, $3); }
         ;
@@ -192,8 +197,8 @@ void print_raw_tree(node_t *node, int depth);
         | initialize_list COMMA initialize_expr { $$ = merge_node($1, $3); }
         ;
 
-    expr: const                                 { $$ = new_node_expr("expr_const", 1, $1); }
-        | ID                                    { $$ = new_node_expr("expr_id", 1, $1); }
+    expr: const                                 { $$ = new_node_expr("expr_const", 2, $1, yylineno); }
+        | ID                                    { $$ = new_node_expr("expr_id", 2, $1,yylineno); }
         | call_func                             { $$ = new_node("expression", 1, $1); }
         | dereference                           { $$ = new_node("expression", 1, $1); }
         | member_selection                      { $$ = new_node("expression", 1, $1); }
