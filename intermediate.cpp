@@ -3,10 +3,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-extern "C" {
-#include "ast_symbol.h"
-}
-
 extern FILE *ast_out;
 std::vector<quadruple *> quadruple_array;
 std::vector<address3 *> address3_pool;
@@ -229,11 +225,10 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         node_sign_m *m3 = (node_sign_m *)node->children[6];
         node_flow *n1 = (node_flow *)node->children[5];
         backpatch(for_b->true_list, m3->instr);
-        backpatch(for_s->next_list, m2->instr);
         backpatch(n1->next_list, m1->instr);
+        backpatch(for_s->next_list, m2->instr);
+        gen_goto(m2->instr);
         s->next_list = for_b->false_list;
-        address3 *m2_instr = new address3("", m2->instr);
-        gen_goto(m2_instr);
     } else if (strcmp(type, "while statement") == 0) { // while
         b = (node_bool *)s->children[1];
         node_sign_m *m1 = (node_sign_m *)s->children[0];
@@ -267,7 +262,7 @@ void get_const_pool(node_t *node, DAG *dag) {
 }
 
 void gen_code(node_t *root) {
-    symbol_table_t *table = generate_symbol_table(root);
+    symbol_table_t *table = new_scope(NULL);
     DAG *dag = new DAG();
     get_const_pool(root, dag);
     tranverse_tree(root, table, dag);
