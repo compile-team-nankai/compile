@@ -3,6 +3,7 @@ int main() {
     int b = 3.4;
     int c = 0;
     int a = 5;
+    int a = 4;
     // d = 6;
     b = -45 + 45 * 4 * 4 - 45;
     a = -a + (b - a) * (b - a);
@@ -23,8 +24,7 @@ int main() {
     } else {
         a = 10;
     }
-    int i = 0;
-    for (; i < 5; i = i + 1) {
+    for (int i = 0; i < 5; i = i + 1) {
         int k = 10;
     }
     do {

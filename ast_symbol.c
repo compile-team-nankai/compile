@@ -102,7 +102,7 @@ void handle_node(node_t *node, symbol_table_t *table) {
 
 symbol_table_t *generate_symbol_table(node_t *root) {
     symbol_table_t *table = new_scope(NULL);
-    handle_node(root, table);
+    // handle_node(root, table);
     return table;
 }
 

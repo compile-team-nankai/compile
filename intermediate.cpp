@@ -119,10 +119,16 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     node_bool *b2 =
         node->children_num > 2 ? (node_bool *)node->children[2] : nullptr;
     node_flow *s = (node_flow *)node;
+    if (strcmp(type, "declare clause") == 0) {
+        symbol_t symbol;
+        symbol.type = strdup(node->children[0]->node_type);
+        symbol.name = node->children[0]->value;
+        insert_symbol(table, symbol, node->line);
+    }
     //遍历子结点
     for (int i = 0; i < node->children_num; ++i) {
-        if (strcmp(node->children[i]->node_type, "code block") == 0) {
-            symbol_table_t *next = next_scope(table);
+        if (strcmp(node->children[i]->node_type, "code block") == 0 || strcmp(node->children[i]->node_type, "for statement") == 0) {
+            symbol_table_t *next = new_scope(table);
             tranverse_tree(node->children[i], next, dag);
         } else {
             tranverse_tree(node->children[i], table, dag);

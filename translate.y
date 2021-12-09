@@ -164,17 +164,17 @@ void print_raw_tree(node_t *node, int depth);
         | bool_expr     { $$ = $1; }
         ;
 
-    declare: type declare_clause        { $$ = new_node("declare", 3, $1, $2,yylineno); }
+    declare: type declare_clause        { $$ = new_node("declare", 2, $1, $2); }
         | declare COMMA declare_clause  { $$ = merge_node($1, $3); }
         ;
 
-    declare_clause: ID                          { $$ = new_node("declare clause", 1, $1); }
-        | array_declare                         { $$ = new_node("declare clause", 1, $1); }
-        | pointer_declare                       { $$ = new_node("declare clause", 1, $1); }
-        | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 2, $1,
-                                                    new_node($2->node_type, 2, new_node_expr("expr_id", 2, new_value("id", strdup($1->value)),yylineno), $3)); }
-        | pointer_declare ASSIGN expr           { $$ = new_node("declare clause", 3, $1, $2, $3); }
-        | array_declare ASSIGN initialize_expr  { $$ = new_node("declare clause", 3, $1, $2, $3); }
+    declare_clause: ID                          { $$ = new_node("declare clause", 2, $1,yylineno); }
+        | array_declare                         { $$ = new_node("declare clause", 2, $1,yylineno); }
+        | pointer_declare                       { $$ = new_node("declare clause", 2, $1,yylineno); }
+        | ID ASSIGN initialize_expr             { $$ = new_node("declare clause", 3, $1,
+                                                    new_node($2->node_type, 2, new_node_expr("expr_id", 2, new_value("id", strdup($1->value)),yylineno), $3),yylineno); }
+        | pointer_declare ASSIGN expr           { $$ = new_node("declare clause", 4, $1, $2, $3,yylineno); }
+        | array_declare ASSIGN initialize_expr  { $$ = new_node("declare clause", 4, $1, $2, $3,yylineno); }
         ;
 
     pointer_declare: MUL ID     { $$ = new_node("pointer", 2, $1, $2); }

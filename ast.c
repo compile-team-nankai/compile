@@ -6,7 +6,7 @@
 
 node_t *new_node(char *node_type, int n, ...) {
     int m = n;
-    if (strcmp(node_type, "declare") == 0 && n == 3) {
+    if (strcmp(node_type, "declare clause") == 0 && n > 1) {
         m = n - 1;
     }
     node_t *node = malloc(sizeof(node_t));
@@ -17,10 +17,11 @@ node_t *new_node(char *node_type, int n, ...) {
     va_list ap;
     va_start(ap, n);
     for (int i = 0; i < n; ++i) {
-        if (strcmp(node_type, "declare") == 0 && i == 2) {
+        if (strcmp(node_type, "declare clause") == 0 && i == n - 1) {
             node->line = va_arg(ap, int);
+        } else {
+            node->children[i] = va_arg(ap, node_t *);
         }
-        node->children[i] = va_arg(ap, node_t *);
     }
     return node;
 }
