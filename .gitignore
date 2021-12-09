@@ -6,3 +6,4 @@ exe
 y.output
 build
 gencode
+.clang-format

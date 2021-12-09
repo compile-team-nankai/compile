@@ -4,17 +4,17 @@
 
 char error[1024] = {'\0'};
 
-symbol_table_t* new_scope(symbol_table_t* father) {
-    symbol_table_t* table = (symbol_table_t*)malloc(sizeof(symbol_table_t));
+symbol_table_t *new_scope(symbol_table_t *father) {
+    symbol_table_t *table = (symbol_table_t *)malloc(sizeof(symbol_table_t));
     table->head = NULL;
     table->cur_child = 0;
     table->children_num = 0;
     table->children = NULL;
     table->prev = father;
     if (father) {
-        symbol_table_t** tmp = father->children;
+        symbol_table_t **tmp = father->children;
         father->children =
-            malloc(sizeof(symbol_table_t*) * (father->children_num + 1));
+            malloc(sizeof(symbol_table_t *) * (father->children_num + 1));
         for (int i = 0; i < father->children_num; ++i) {
             father->children[i] = tmp[i];
         }
@@ -34,20 +34,20 @@ symbol_table_t* new_scope(symbol_table_t* father) {
     return table;
 }
 
-symbol_t* find_symbol(symbol_table_t* table, char* key1) {
+symbol_t *find_symbol(symbol_table_t *table, char *key1) {
     char key_line[100] = {'\0'};
     strcpy(key_line, key1);
-    symbol_table_item_t* tmp = NULL;
+    symbol_table_item_t *tmp = NULL;
     if (table->head) {
-        char* key = strtok(key1, "?");
+        char *key = strtok(key1, "?");
         HASH_FIND_STR(table->head, key, tmp);
     }
     if (tmp == NULL) {
         if (table->prev) {
             return find_symbol(table->prev, key_line);
         }
-        char* key = strtok(key_line, "?");
-        char* l = strtok(NULL, "?");
+        char *key = strtok(key_line, "?");
+        char *l = strtok(NULL, "?");
         if (l != NULL) {
             char e_error[100];
             sprintf(e_error, "%s%s%s%s", l, ": Error! variable ", key,
@@ -59,11 +59,11 @@ symbol_t* find_symbol(symbol_table_t* table, char* key1) {
     return &tmp->symbol;
 }
 
-void insert_symbol(symbol_table_t* table, symbol_t symbol, int line) {
-    symbol_table_item_t* it;
+void insert_symbol(symbol_table_t *table, symbol_t symbol, int line) {
+    symbol_table_item_t *it;
     HASH_FIND_STR(table->head, symbol.name, it);
     if (it == NULL) {
-        symbol_table_item_t* tmp = malloc(sizeof(symbol_table_item_t));
+        symbol_table_item_t *tmp = malloc(sizeof(symbol_table_item_t));
         tmp->key = symbol.name;
         tmp->symbol = symbol;
         HASH_ADD_KEYPTR(hh, table->head, symbol.name, strlen(symbol.name), tmp);
@@ -76,7 +76,7 @@ void insert_symbol(symbol_table_t* table, symbol_t symbol, int line) {
     }
 }
 
-void free_table(symbol_table_t* table) {
+void free_table(symbol_table_t *table) {
     symbol_table_item_t *cur, *tmp;
     HASH_ITER(hh, table->head, cur, tmp) {
         HASH_DELETE(hh, table->head, cur);
@@ -85,7 +85,7 @@ void free_table(symbol_table_t* table) {
     }
 }
 
-symbol_table_t* next_scope(symbol_table_t* father) {
+symbol_table_t *next_scope(symbol_table_t *father) {
     if (!father) {
         return NULL;
     }

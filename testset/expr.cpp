@@ -3,7 +3,7 @@ int main() {
     int b = 3.4;
     int c = 0;
     int a = 5;
-    d = 6;
+    // d = 6;
     b = -45 + 45 * 4 * 4 - 45;
     a = -a + (b - a) * (b - a);
     if (1) {
