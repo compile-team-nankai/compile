@@ -6,6 +6,7 @@
 typedef struct symbol_t {
     char *name;
     char *type;
+    long long offset;
 } symbol_t;
 
 typedef struct {

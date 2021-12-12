@@ -10,6 +10,15 @@ extern "C" {
 #include "symbol_table.h"
 }
 
+namespace typewidth {
+const int INT = 4;
+}
+
+namespace address3type {
+const std::string INT = "int";
+const std::string ADDRESS = "address";
+} // namespace address3type
+
 enum QuadrupleType {
     BinaryOp,
     UnaryOp,
@@ -23,11 +32,18 @@ enum QuadrupleType {
 
 //地址
 struct address3 {
-    std::string type; // num|address
-    long long value;
+    std::string type; // int|address
+    char *value;
 
     address3(std::string type, long long value) :
-        type(type), value(value) {
+        type(type) {
+        this->value = (char *)malloc(20);
+        sprintf(this->value, "%lld", value);
+    }
+
+    address3(std::string type, const char *value) :
+        type(type) {
+        this->value = strdup(value);
     }
 };
 
@@ -73,26 +89,22 @@ struct node_dag {
     address3 *addr; //存储表达式值的临时变量地址
     node_dag *next;
 
-    node_dag(std::string type,
-             int index1,
-             int index2) //对于双目运算符，有两个字段，分别指向左右子结点
-        :
+    node_dag(std::string type, int index1, int index2) :
         index(-1),
         type(type),
         index1(index1),
         index2(index2),
         addr(nullptr),
-        next(nullptr) {
+        next(nullptr) { //双目运算符有两个子结点
     }
 
-    node_dag(std::string type, int index1) //单目运算符只有一个子结点
-        :
+    node_dag(std::string type, int index1) :
         index(-1),
         type(type),
         index1(index1),
         index2(-1),
         addr(nullptr),
-        next(nullptr) {
+        next(nullptr) { //单目运算符只有一个子结点
     }
 };
 
@@ -113,23 +125,17 @@ struct leaf_dag {
 class DAG {
 public:
     ~DAG();
-
     DAG() :
         index_cur(0), line_number(0) {
     }
-
     DAG(int offset) :
         index_cur(offset), line_number(0) {
     }
-
-    bool try_get_expr(node_expr *e, node_dag *new_node);
-
-    bool try_get_expr(node_expr *e, std::string type, long long value);
-
+    bool try_get_expr(node_expr *e, node_dag *new_node);                      //尝试匹配公共子表达式
+    bool try_get_const(node_expr *e, std::string type, const char *value);    //尝试匹配单个常量
+    bool try_get_variable(node_expr *e, std::string type, long long &offset); //尝试匹配单个变量
     static bool is_node_equal(node_dag *a, node_dag *b);
-
     void print_dag_node(node_dag *node);
-
     void print_dag_leaf(leaf_dag *leaf);
 
     int index_cur; // 当前最大标号
@@ -187,15 +193,15 @@ address3 *new_address3(std::string type, long long value);
 
 address3 *new_address3(std::string type, const char *value);
 
-address3 *new_address3_number(long long number);
+address3 *new_address3_int(long long number);
 
-address3 *new_address3_number(const char *number);
+address3 *new_address3_int(const char *number);
 
 address3 *new_address3_address(long long address);
 
 address3 *new_address3_address(const char *address);
 
-address3 *new_temp();
+address3 *new_temp(int width);
 
 int get_nextinstr();
 
