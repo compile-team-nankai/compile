@@ -7,7 +7,7 @@ extern FILE *ast_out;
 std::vector<quadruple *> quadruple_array;
 std::vector<address3 *> address3_pool;
 std::vector<std::vector<int> *> bool_list_pool;
-long long offset = 0;
+long long offset_global = 0;
 char type_warning[1024] = {'\0'};
 
 DAG::~DAG() {
@@ -30,8 +30,8 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
     int index = -1;
     bool found = false;
     auto got = node_map.find(new_node->type);
-    if (got == node_map.end()) {                             // 匹配桶失败，新建桶
-        new_node->addr = e->addr = new_temp(typewidth::INT); // 新建临时变量
+    if (got == node_map.end()) {                   // 匹配桶失败，新建桶
+        new_node->addr = e->addr = new_temp_int(); // 新建临时变量
         new_node->index = index = ++index_cur;
         node_map.emplace(new_node->type, new_node);
     } else {
@@ -43,8 +43,8 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
                 found = true;
                 delete new_node; // 不需要新结点，释放内存
                 break;
-            } else if (head->next == nullptr) { // 匹配失败，将新结点加入链表
-                new_node->addr = e->addr = new_temp(typewidth::INT);
+            } else if (head->next == nullptr) {            // 匹配失败，将新结点加入链表
+                new_node->addr = e->addr = new_temp_int(); // 新建临时变量
                 new_node->index = index = ++index_cur;
                 head->next = new_node;
                 break;
@@ -56,15 +56,15 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
     return found;
 }
 
-bool DAG::try_get_const(node_expr *e, std::string type, const char *value) {
+bool DAG::try_get_const_int(node_expr *e, std::string type, int value) {
     int index = -1;
     bool found = false;
-    std::string key = type + std::string(value);
+    std::string key = type + std::to_string(value);
     auto got = leaf_map.find(key);
     if (got == leaf_map.end()) { // 匹配失败，插入新结点
-        address3 *addr = new_temp(typewidth::INT);
+        address3 *addr = new_temp_int();
         e->addr = addr;
-        gen_assign(new_address3_int(value), e->addr);
+        gen_assign(new_address3_immidiate(value), e->addr);
         leaf_dag *new_leaf = new leaf_dag(addr);
         new_leaf->index = index = ++index_cur;
         leaf_map.emplace(key, new_leaf);
@@ -80,9 +80,9 @@ bool DAG::try_get_const(node_expr *e, std::string type, const char *value) {
 bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_offset) {
     int index = -1;
     bool found = false;
-    if (symbol_offset == -1) {  //已声明，未分配内存
-        symbol_offset = offset; //在符号表中记录offset
-        address3 *addr = new_temp(typewidth::INT);
+    if (symbol_offset == -1) {         //已声明，未分配内存
+        symbol_offset = offset_global; //在符号表中记录offset
+        address3 *addr = new_temp_int();
         e->addr = addr;
         std::string key = type + std::to_string(symbol_offset);
         leaf_dag *new_leaf = new leaf_dag(addr);
@@ -145,27 +145,29 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     //遍历子结点
     for (int i = 0; i < node->children_num; ++i) {
         if (strcmp(node->children[i]->node_type, "code block") == 0 || strcmp(node->children[i]->node_type, "for statement") == 0) {
-            long long pre_offset = offset; //记录当前栈顶
+            long long pre_offset = offset_global; //记录当前栈顶
             symbol_table_t *next = new_scope(table);
             tranverse_tree(node->children[i], next, dag);
-            offset = pre_offset; //回退栈顶值
+            offset_global = pre_offset; //回退栈顶值
         } else {
             tranverse_tree(node->children[i], table, dag);
         }
     }
     //执行语义规则
     if (strcmp(type, "expr_const") == 0) { //常量
-        char tmp[100] = {'\0'};
-        if (strchr(e1->value, '.')) {
-            sprintf(tmp, "line %d: float to int\n", e->line);
-            strcat(type_warning, tmp);
+        const char *child_type = node->children[0]->node_type;
+        if (strcmp(child_type, "const:int") == 0) {
+            char tmp[100] = {'\0'};
+            if (strchr(e1->value, '.')) {
+                sprintf(tmp, "line %d: float to int\n", e->line);
+                strcat(type_warning, tmp);
+            }
+            dag->try_get_const_int(e, "expr_const", atoi(node->children[0]->value));
         }
-        dag->try_get_const(e, "expr_const", e1->value);
     } else if (strcmp(type, "expr_id") == 0) { //标识符
         char tmp[100];
         sprintf(tmp, "%s%s%d", node->children[0]->value, "?line ", e->line);
         symbol_t *symbol = find_symbol(table, tmp);
-        printf("id %s %lld\n", symbol->name, symbol->offset);
         dag->try_get_variable(e, "expr_id", symbol->offset);
     } else if (strcmp(type, "=") == 0) { //赋值符号
         e->addr = e1->addr;
@@ -278,8 +280,7 @@ void get_const_pool(node_t *node, DAG *dag) {
     }
     if (strcmp(type, "expr_const") == 0) { //常量
         node_expr *e = (node_expr *)node;
-        node_expr *e1 = (node_expr *)node->children[0];
-        dag->try_get_const(e, type, e1->value);
+        dag->try_get_const_int(e, type, atoi(e->children[0]->value));
     }
 }
 
@@ -301,25 +302,19 @@ void print_quadruple(quadruple *p) {
         print_address3(p->result);
     } else if (type == QuadrupleType::Goto) {
         printf("goto ");
-        if (p->result != nullptr) {
-            printf("%s", p->result->value);
-        }
+        print_address3_value(p->result);
     } else if (type == QuadrupleType::IfGoto) {
         printf("if ");
         print_address3(p->arg1);
         printf("== true goto ");
-        if (p->result != nullptr) {
-            printf("%s", p->result->value);
-        }
+        print_address3_value(p->result);
     } else if (type == QuadrupleType::IfRelop) {
         printf("if ");
         print_address3(p->arg1);
         printf("%s ", p->op.c_str());
         print_address3(p->arg2);
         printf(" goto ");
-        if (p->result != nullptr) {
-            printf("%s", p->result->value);
-        }
+        print_address3_value(p->result);
     }
     printf("\n");
 }
@@ -335,11 +330,20 @@ void print_address3(address3 *address) {
     if (address == nullptr) {
         return;
     }
-    if (address->type == address3type::INT) {
-        printf("#%s ", address->value);
+    if (address->type == address3type::INT || address->type == address3type::STRING) {
+        printf("(%s $%lld) ", address->type.c_str(), address->offset);
+    } else if (address->type == address3type::IMMIDIATE) {
+        printf("(#%s) ", address->value);
     } else {
-        printf("$%s ", address->value);
+        printf("type=%s width=%d offset=%lld\n", address->type.c_str(), address->width, address->offset);
     }
+}
+
+void print_address3_value(address3 *address) {
+    if (address == nullptr) {
+        return;
+    }
+    printf("%s", address->value);
 }
 
 node_t *new_node_bool(char *node_type, int n, ...) {
@@ -424,10 +428,7 @@ void print_raw_tree(node_t *node, int depth) {
     }
 }
 
-void gen_binary_op(std::string op,
-                   address3 *arg1,
-                   address3 *arg2,
-                   address3 *result) {
+void gen_binary_op(std::string op, address3 *arg1, address3 *arg2, address3 *result) {
     quadruple_array.push_back(new quadruple(op, arg1, arg2, result));
 }
 
@@ -444,23 +445,19 @@ void gen_goto(address3 *result) {
 }
 
 void gen_goto(int result) {
-    gen_goto(new_address3_int(result));
+    gen_goto(new_address3_immidiate(result));
 }
 
-void gen_if_goto(address3 *arg1, address3 *result) {
-    quadruple_array.push_back(new quadruple("if_goto", arg1, nullptr, result));
+void gen_if_goto(address3 *arg1, address3 *result) { //转为if_relop
+    quadruple_array.push_back(new quadruple("!=", arg1, new_address3_immidiate(0), result));
 }
 
-void gen_if_relop(std::string op,
-                  address3 *arg1,
-                  address3 *arg2,
-                  address3 *result) {
+void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result) {
     quadruple_array.push_back(new quadruple(op, arg1, arg2, result));
 }
 
 void gen_return(address3 *result) {
-    quadruple_array.push_back(
-        new quadruple("return", nullptr, nullptr, result));
+    quadruple_array.push_back(new quadruple("return", nullptr, nullptr, result));
 }
 
 QuadrupleType get_quadruple_type(std::string op) {
@@ -494,7 +491,7 @@ void backpatch(std::vector<int> *arr, int instr) {
         return;
     }
     for (auto index : *arr) {
-        quadruple_array[index]->result = new_address3_int(instr);
+        quadruple_array[index]->result = new_address3_immidiate(instr);
     }
 }
 
@@ -508,37 +505,45 @@ std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2) {
     return p;
 }
 
-address3 *new_address3(std::string type, long long value) {
+address3 *new_address3(std::string type, int value) {
     address3 *p = new address3(type, value);
     address3_pool.push_back(p);
     return p;
 }
 
-address3 *new_address3(std::string type, const char *value) {
-    address3 *p = new address3(type, value);
+address3 *new_address3(std::string type, long long offset) {
+    address3 *p = new address3(type, offset);
     address3_pool.push_back(p);
     return p;
 }
 
-address3 *new_address3_int(long long number) {
-    return new_address3(address3type::INT, number);
+address3 *new_address3(std::string type, const char *value, long long offset) {
+    address3 *p = new address3(type, value, offset);
+    address3_pool.push_back(p);
+    return p;
 }
 
-address3 *new_address3_int(const char *number) {
-    return new_address3(address3type::INT, number);
+address3 *new_address3_immidiate(int value) {
+    return new_address3(address3type::IMMIDIATE, value);
 }
 
-address3 *new_address3_address(long long address) {
-    return new_address3(address3type::ADDRESS, address);
+address3 *new_address3_int(long long offset) {
+    return new_address3(address3type::INT, offset);
 }
 
-address3 *new_address3_address(const char *address) {
-    return new_address3(address3type::ADDRESS, address);
+address3 *new_address3_string(const char *value, long long offset) {
+    return new_address3(address3type::STRING, value, offset);
 }
 
-address3 *new_temp(int width) {
-    address3 *p = new_address3_address(offset);
-    offset += width;
+address3 *new_temp_int() {
+    address3 *p = new_address3_int(offset_global);
+    offset_global += address3typewidth::INT;
+    return p;
+}
+
+address3 *new_temp_string(const char *value) {
+    address3 *p = new_address3_string(value, offset_global);
+    offset_global += (strlen(value) / 4 + 1) * 4;
     return p;
 }
 
@@ -551,8 +556,10 @@ void print_type_warning() {
 }
 
 void free_address3_pool() {
-    for (auto itor = address3_pool.begin(); itor != address3_pool.end();
-         ++itor) {
+    for (auto itor = address3_pool.begin(); itor != address3_pool.end(); ++itor) {
+        if ((*itor)->value != NULL) {
+            free((*itor)->value);
+        }
         delete *itor;
     }
 }

@@ -12,12 +12,17 @@ extern "C" {
 
 namespace typewidth {
 const int INT = 4;
-}
+} // namespace typewidth
 
 namespace address3type {
 const std::string INT = "int";
-const std::string ADDRESS = "address";
+const std::string IMMIDIATE = "immidiate"; //立即数
+const std::string STRING = "string";
 } // namespace address3type
+
+namespace address3typewidth {
+const int INT = 12;
+} // namespace address3typewidth
 
 enum QuadrupleType {
     BinaryOp,
@@ -32,18 +37,25 @@ enum QuadrupleType {
 
 //地址
 struct address3 {
-    std::string type; // int|address
-    char *value;
+    std::string type;   // address3type
+    char *value = NULL; //仅立即数和string有value
+    int width;
+    long long offset; //立即数无offset
 
-    address3(std::string type, long long value) :
-        type(type) {
-        this->value = (char *)malloc(20);
-        sprintf(this->value, "%lld", value);
+    address3(std::string type, int value) :
+        type(type), width(address3typewidth::INT), offset(-1) { //构造int型立即数
+        this->value = (char *)malloc(address3typewidth::INT);
+        sprintf(this->value, "%d", value);
     }
 
-    address3(std::string type, const char *value) :
-        type(type) {
+    address3(std::string type, long long offset) :
+        type(type), width(address3typewidth::INT), offset(offset) { //构造int变量
+    }
+
+    address3(std::string type, const char *value, long long offset) :
+        type(type), offset(offset) { //构造string
         this->value = strdup(value);
+        this->width = strlen(value) + 1;
     }
 };
 
@@ -132,7 +144,7 @@ public:
         index_cur(offset), line_number(0) {
     }
     bool try_get_expr(node_expr *e, node_dag *new_node);                      //尝试匹配公共子表达式
-    bool try_get_const(node_expr *e, std::string type, const char *value);    //尝试匹配单个常量
+    bool try_get_const_int(node_expr *e, std::string type, int value);        //尝试匹配单个常量
     bool try_get_variable(node_expr *e, std::string type, long long &offset); //尝试匹配单个变量
     static bool is_node_equal(node_dag *a, node_dag *b);
     void print_dag_node(node_dag *node);
@@ -163,46 +175,30 @@ void print_raw_tree(node_t *node, int depth);
 }
 
 void print_address3(address3 *address);
+void print_address3_value(address3 *address);
 void print_quadruple(quadruple *p);
-void gen_binary_op(std::string op,
-                   address3 *arg1,
-                   address3 *arg2,
-                   address3 *result); // result = arg1 op arg2
-void gen_unary_op(std::string op,
-                  address3 *arg1,
-                  address3 *result);               // result = op arg1
-void gen_assign(address3 *arg1, address3 *result); // result = arg1
-void gen_goto(address3 *result);                   // goto result(num)
-void gen_goto(int result);                         // goto result(num)
-void gen_if_goto(address3 *arg1,
-                 address3 *result); // if (arg1 == true) goto result
-void gen_if_relop(std::string op,
-                  address3 *arg1,
-                  address3 *arg2,
-                  address3 *result); // if (arg1 rel.op arg2) goto result
+void gen_binary_op(std::string op, address3 *arg1, address3 *arg2, address3 *result); // result = arg1 op arg2
+void gen_unary_op(std::string op, address3 *arg1, address3 *result);                  // result = op arg1
+void gen_assign(address3 *arg1, address3 *result);                                    // result = arg1
+void gen_goto(address3 *result);                                                      // goto result(num)
+void gen_goto(int result);                                                            // goto result(num)
+void gen_if_goto(address3 *arg1, address3 *result);                                   // if (arg1 == true) goto result
+void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result);  // if (arg1 rel.op arg2) goto result
 void gen_return(address3 *result);
 QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);
-
 void backpatch(std::vector<int> *arr, int instr);
-
 std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2);
 
-address3 *new_address3(std::string type, long long value);
-
-address3 *new_address3(std::string type, const char *value);
-
-address3 *new_address3_int(long long number);
-
-address3 *new_address3_int(const char *number);
-
-address3 *new_address3_address(long long address);
-
-address3 *new_address3_address(const char *address);
-
-address3 *new_temp(int width);
-
+address3 *new_address3(std::string type, int value);
+address3 *new_address3(std::string type, long long offset);
+address3 *new_address3(std::string type, const char *value, long long offset);
+address3 *new_address3_immidiate(int value);
+address3 *new_address3_int(long long offset);
+address3 *new_address3_string(const char *value, long long offset);
+address3 *new_temp_int();
+address3 *new_temp_string(const char *value);
 int get_nextinstr();
 
 void print_type_warning();
