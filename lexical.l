@@ -60,6 +60,6 @@ char                                { yylval.node = new_node("char", 0); return 
 struct[ \t\n]+[a-zA-Z][a-zA-Z0-9_]* { yylval.node = new_node(strdup(yytext), 0); return STRUCT; }
 [a-zA-Z][a-zA-Z0-9_]*               { yylval.node = new_value("id", strdup(yytext)); return ID; }
 '.'                                 { yylval.node = new_value("const:char", strdup(yytext)); return CHARACTER;}
-\"(\\.|[^"\\])*\"                   { yylval.node = new_value("const:string", strdup(yytext)); return STRING; }
+\"(\\.|[^"\\])*\"                   { yylval.node = new_value("const:string", strndup(yytext + 1, strlen(yytext) - 2)); return STRING; }
 [ \t\n]                             // Ignore whitespace.
 %%

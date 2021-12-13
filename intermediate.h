@@ -28,16 +28,7 @@ const std::string CINT = "const:int";
 const std::string CSTRING = "const:string";
 } // namespace nonterminal_symbol_type
 
-enum QuadrupleType {
-    BinaryOp,
-    UnaryOp,
-    Assign,
-    Goto,
-    IfGoto,
-    IfRelop,
-    Return,
-    NotDefined
-};
+enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, Return, Param, Call, NotDefined };
 
 //地址
 struct address3 {
@@ -46,14 +37,12 @@ struct address3 {
     long long offset;      //仅变量类型有offset
     int width;             //仅变量类型有width
 
-    address3(std::string type, const char *value) :
-        type(type), offset(-1), width(0) { //构造值类型
+    address3(std::string type, const char *value) : type(type), offset(-1), width(0) { //构造值类型
         this->value = new char[strlen(value) + 1]();
         strcpy(this->value, value);
     }
 
-    address3(std::string type, long long offset, int width) :
-        type(type), offset(offset), width(width) { //构造变量类型
+    address3(std::string type, long long offset, int width) : type(type), offset(offset), width(width) { //构造变量类型
     }
 };
 
@@ -64,8 +53,7 @@ struct quadruple {
     address3 *arg2;
     address3 *result;
 
-    quadruple(std::string op, address3 *arg1, address3 *arg2, address3 *result) :
-        op(op), arg1(arg1), arg2(arg2), result(result) {
+    quadruple(std::string op, address3 *arg1, address3 *arg2, address3 *result) : op(op), arg1(arg1), arg2(arg2), result(result) {
     }
 };
 
@@ -100,21 +88,11 @@ struct node_dag {
     node_dag *next;
 
     node_dag(std::string type, int index1, int index2) :
-        index(-1),
-        type(type),
-        index1(index1),
-        index2(index2),
-        addr(nullptr),
-        next(nullptr) { //双目运算符有两个子结点
+        index(-1), type(type), index1(index1), index2(index2), addr(nullptr), next(nullptr) { //双目运算符有两个子结点
     }
 
     node_dag(std::string type, int index1) :
-        index(-1),
-        type(type),
-        index1(index1),
-        index2(-1),
-        addr(nullptr),
-        next(nullptr) { //单目运算符只有一个子结点
+        index(-1), type(type), index1(index1), index2(-1), addr(nullptr), next(nullptr) { //单目运算符只有一个子结点
     }
 };
 
@@ -123,23 +101,19 @@ struct leaf_dag {
     int index;
     address3 *addr;
 
-    leaf_dag() :
-        index(-1), addr(nullptr) {
+    leaf_dag() : index(-1), addr(nullptr) {
     }
 
-    leaf_dag(address3 *addr) :
-        index(-1), addr(addr) {
+    leaf_dag(address3 *addr) : index(-1), addr(addr) {
     }
 };
 
 class DAG {
 public:
     ~DAG();
-    DAG() :
-        index_cur(0), line_number(0) {
+    DAG() : index_cur(0), line_number(0) {
     }
-    DAG(int offset) :
-        index_cur(offset), line_number(0) {
+    DAG(int offset) : index_cur(offset), line_number(0) {
     }
     bool try_get_expr(node_expr *e, node_dag *new_node, std::string addr_type);                      //尝试匹配公共子表达式
     bool try_get_const(node_expr *e, std::string type, const char *value);                           //尝试匹配单个常量
@@ -151,10 +125,8 @@ public:
 
     int index_cur; // 当前最大标号
     int line_number;
-    std::unordered_map<std::string, node_dag *>
-        node_map; // 内部结点的哈希表存储桶，每个桶是一个链表，存储一小部分表达式结点
-    std::unordered_map<std::string, leaf_dag *>
-        leaf_map; // 叶子结点的哈希表存储单个叶子节点
+    std::unordered_map<std::string, node_dag *> node_map; // 内部结点的哈希表存储桶，每个桶是一个链表，存储一小部分表达式结点
+    std::unordered_map<std::string, leaf_dag *> leaf_map; // 叶子结点的哈希表存储单个叶子节点
 };
 
 void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag);
@@ -184,6 +156,8 @@ void gen_goto(int result);                                                      
 void gen_if_goto(address3 *arg1, address3 *result);                                   // if (arg1 == true) goto result
 void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result);  // if (arg1 rel.op arg2) goto result
 void gen_return(address3 *result);
+void gen_param(address3 *result);
+void gen_call(address3 *result);
 QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);

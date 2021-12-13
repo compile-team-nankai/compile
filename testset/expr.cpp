@@ -24,16 +24,12 @@ int main() {
     } else {
         a = 10;
     }
-    for (int i = 0; i < 5; i = i + 1) {
-        int k = 10;
-    }
-    do {
-        c = c + 1;
-    } while (c < 3);
-    while (c < 6) {
-        c = c + 1;
-    }
+    for (int i = 0; i < 5; i = i + 1) { int k = 10; }
+    do { c = c + 1; } while (c < 3);
+    while (c < 6) { c = c + 1; }
     "abcde";
     &a;
+    scanf("%d", &a);
+    printf("%d\n", a);
     return 0;
 }
