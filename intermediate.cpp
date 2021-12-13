@@ -31,7 +31,7 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
     bool found = false;
     auto got = node_map.find(new_node->type);
     if (got == node_map.end()) {                   // 匹配桶失败，新建桶
-        new_node->addr = e->addr = new_temp_int(); // 新建临时变量
+        new_node->addr = e->addr = new_temp_int(); // 新建int型临时变量
         new_node->index = index = ++index_cur;
         node_map.emplace(new_node->type, new_node);
     } else {
@@ -56,16 +56,14 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
     return found;
 }
 
-bool DAG::try_get_const_int(node_expr *e, std::string type, int value) {
+bool DAG::try_get_const(node_expr *e, std::string type, const char *value) {
     int index = -1;
     bool found = false;
-    std::string key = type + std::to_string(value);
+    std::string key = type + std::string(value);
     auto got = leaf_map.find(key);
     if (got == leaf_map.end()) { // 匹配失败，插入新结点
-        address3 *addr = new_temp_int();
-        e->addr = addr;
-        gen_assign(new_address3_immidiate(value), e->addr);
-        leaf_dag *new_leaf = new leaf_dag(addr);
+        create_value_and_assign(e, type, value);
+        leaf_dag *new_leaf = new leaf_dag(e->addr);
         new_leaf->index = index = ++index_cur;
         leaf_map.emplace(key, new_leaf);
     } else {                         //匹配成功
@@ -80,9 +78,9 @@ bool DAG::try_get_const_int(node_expr *e, std::string type, int value) {
 bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_offset) {
     int index = -1;
     bool found = false;
-    if (symbol_offset == -1) {         //已声明，未分配内存
-        symbol_offset = offset_global; //在符号表中记录offset
-        address3 *addr = new_temp_int();
+    if (symbol_offset == -1) {           //已声明，未分配内存
+        symbol_offset = offset_global;   //在符号表中记录offset
+        address3 *addr = new_temp_int(); //分配int型内存
         e->addr = addr;
         std::string key = type + std::to_string(symbol_offset);
         leaf_dag *new_leaf = new leaf_dag(addr);
@@ -103,6 +101,25 @@ bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_off
     }
     e->index = index;
     return found;
+}
+
+void DAG::create_value_and_assign(node_expr *e, std::string type, const char *value) {
+    address3 *addr = nullptr;
+    if (type == nonterminal_symbol_type::CSTRING) {
+        int len = strlen(value);
+        char *str_value = new char[len - 1]();
+        strncpy(str_value, value + 1, len - 2); //去除值的双引号
+        addr = new_temp_string(strlen(str_value));
+        gen_assign(new_address3_string_value(str_value), addr);
+        delete str_value;
+    } else if (type == nonterminal_symbol_type::CINT) {
+        addr = new_temp_int();
+        gen_assign(new_address3_int_value(value), addr);
+    } else { // undifined behaviour!
+        addr = new_temp_int();
+        gen_assign(new_address3_int_value("undifined"), addr);
+    }
+    e->addr = addr;
 }
 
 bool DAG::is_node_equal(node_dag *a, node_dag *b) {
@@ -145,8 +162,8 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     //遍历子结点
     for (int i = 0; i < node->children_num; ++i) {
         if (strcmp(node->children[i]->node_type, "code block") == 0 || strcmp(node->children[i]->node_type, "for statement") == 0) {
-            long long pre_offset = offset_global; //记录当前栈顶
-            symbol_table_t *next = new_scope(table);
+            long long pre_offset = offset_global;    //记录当前栈顶
+            symbol_table_t *next = new_scope(table); //创建新作用域
             tranverse_tree(node->children[i], next, dag);
             offset_global = pre_offset; //回退栈顶值
         } else {
@@ -155,15 +172,13 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
     }
     //执行语义规则
     if (strcmp(type, "expr_const") == 0) { //常量
-        const char *child_type = node->children[0]->node_type;
-        if (strcmp(child_type, "const:int") == 0) {
-            char tmp[100] = {'\0'};
-            if (strchr(e1->value, '.')) {
-                sprintf(tmp, "line %d: float to int\n", e->line);
-                strcat(type_warning, tmp);
-            }
-            dag->try_get_const_int(e, "expr_const", atoi(node->children[0]->value));
-        }
+        const node_t *child = node->children[0];
+        dag->try_get_const(e, child->node_type, child->value);
+        // char tmp[100] = {'\0'};
+        // if (strchr(e1->value, '.')) {
+        //     sprintf(tmp, "line %d: float to int\n", e->line);
+        //     strcat(type_warning, tmp);
+        // }
     } else if (strcmp(type, "expr_id") == 0) { //标识符
         char tmp[100];
         sprintf(tmp, "%s%s%d", node->children[0]->value, "?line ", e->line);
@@ -280,7 +295,7 @@ void get_const_pool(node_t *node, DAG *dag) {
     }
     if (strcmp(type, "expr_const") == 0) { //常量
         node_expr *e = (node_expr *)node;
-        dag->try_get_const_int(e, type, atoi(e->children[0]->value));
+        dag->try_get_const(e, node->children[0]->node_type, node->children[0]->value);
     }
 }
 
@@ -313,7 +328,7 @@ void print_quadruple(quadruple *p) {
         print_address3(p->arg1);
         printf("%s ", p->op.c_str());
         print_address3(p->arg2);
-        printf(" goto ");
+        printf("goto ");
         print_address3_value(p->result);
     }
     printf("\n");
@@ -331,9 +346,9 @@ void print_address3(address3 *address) {
         return;
     }
     if (address->type == address3type::INT || address->type == address3type::STRING) {
-        printf("(%s $%lld) ", address->type.c_str(), address->offset);
-    } else if (address->type == address3type::IMMIDIATE) {
-        printf("(#%s) ", address->value);
+        printf("(%s $%lld, %d) ", address->type.c_str(), address->offset, address->width);
+    } else if (address->type == address3type::INT_VALUE || address->type == address3type::STRING_VALUE) {
+        printf("(%s #%s) ", address->type.c_str(), address->value);
     } else {
         printf("type=%s width=%d offset=%lld\n", address->type.c_str(), address->width, address->offset);
     }
@@ -445,11 +460,11 @@ void gen_goto(address3 *result) {
 }
 
 void gen_goto(int result) {
-    gen_goto(new_address3_immidiate(result));
+    gen_goto(new_address3_int_value(result));
 }
 
 void gen_if_goto(address3 *arg1, address3 *result) { //转为if_relop
-    quadruple_array.push_back(new quadruple("!=", arg1, new_address3_immidiate(0), result));
+    quadruple_array.push_back(new quadruple("!=", arg1, new_address3_int_value(0), result));
 }
 
 void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result) {
@@ -491,7 +506,7 @@ void backpatch(std::vector<int> *arr, int instr) {
         return;
     }
     for (auto index : *arr) {
-        quadruple_array[index]->result = new_address3_immidiate(instr);
+        quadruple_array[index]->result = new_address3_int_value(instr);
     }
 }
 
@@ -505,45 +520,52 @@ std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2) {
     return p;
 }
 
-address3 *new_address3(std::string type, int value) {
+address3 *new_address3(std::string type, const char *value) {
     address3 *p = new address3(type, value);
     address3_pool.push_back(p);
     return p;
 }
 
-address3 *new_address3(std::string type, long long offset) {
-    address3 *p = new address3(type, offset);
+address3 *new_address3(std::string type, long long offset, int width) {
+    address3 *p = new address3(type, offset, width);
     address3_pool.push_back(p);
     return p;
 }
 
-address3 *new_address3(std::string type, const char *value, long long offset) {
-    address3 *p = new address3(type, value, offset);
-    address3_pool.push_back(p);
+address3 *new_address3_int_value(const char *value) {
+    return new_address3(address3type::INT_VALUE, value);
+}
+
+address3 *new_address3_int_value(int value) {
+    char *value_str = new char[21];
+    sprintf(value_str, "%d", value);
+    address3 *p = new_address3(address3type::INT_VALUE, value_str);
+    delete value_str;
     return p;
 }
 
-address3 *new_address3_immidiate(int value) {
-    return new_address3(address3type::IMMIDIATE, value);
+address3 *new_address3_string_value(const char *value) {
+    return new_address3(address3type::STRING_VALUE, value);
 }
 
-address3 *new_address3_int(long long offset) {
-    return new_address3(address3type::INT, offset);
+address3 *new_address3_int(long long offset, int width) {
+    return new_address3(address3type::INT, offset, width);
 }
 
-address3 *new_address3_string(const char *value, long long offset) {
-    return new_address3(address3type::STRING, value, offset);
+address3 *new_address3_string(long long offset, int width) {
+    return new_address3(address3type::STRING, offset, width);
 }
 
 address3 *new_temp_int() {
-    address3 *p = new_address3_int(offset_global);
-    offset_global += address3typewidth::INT;
+    address3 *p = new_address3_int(offset_global, typewidth::INT);
+    offset_global += typewidth::INT;
     return p;
 }
 
-address3 *new_temp_string(const char *value) {
-    address3 *p = new_address3_string(value, offset_global);
-    offset_global += (strlen(value) / 4 + 1) * 4;
+address3 *new_temp_string(int length) {
+    length += 1;
+    address3 *p = new_address3_string(offset_global, length);
+    offset_global += length % 4 == 0 ? length : (length / 4 + 1) * 4; //保持地址为4的倍数
     return p;
 }
 
@@ -557,8 +579,8 @@ void print_type_warning() {
 
 void free_address3_pool() {
     for (auto itor = address3_pool.begin(); itor != address3_pool.end(); ++itor) {
-        if ((*itor)->value != NULL) {
-            free((*itor)->value);
+        if ((*itor)->value != nullptr) {
+            delete (*itor)->value;
         }
         delete *itor;
     }

@@ -16,13 +16,15 @@ const int INT = 4;
 
 namespace address3type {
 const std::string INT = "int";
-const std::string IMMIDIATE = "immidiate"; //立即数
 const std::string STRING = "string";
+const std::string INT_VALUE = "int_value"; //立即数(值类型)
+const std::string STRING_VALUE = "string_value";
 } // namespace address3type
 
-namespace address3typewidth {
-const int INT = 12;
-} // namespace address3typewidth
+namespace nonterminal_symbol_type {
+const std::string CINT = "const:int";
+const std::string CSTRING = "const:string";
+} // namespace nonterminal_symbol_type
 
 enum QuadrupleType {
     BinaryOp,
@@ -37,25 +39,19 @@ enum QuadrupleType {
 
 //地址
 struct address3 {
-    std::string type;   // address3type
-    char *value = NULL; //仅立即数和string有value
-    int width;
-    long long offset; //立即数无offset
+    std::string type;      // address3type
+    char *value = nullptr; //仅值类型有value
+    long long offset;      //仅变量类型有offset
+    int width;             //仅变量类型有width
 
-    address3(std::string type, int value) :
-        type(type), width(address3typewidth::INT), offset(-1) { //构造int型立即数
-        this->value = (char *)malloc(address3typewidth::INT);
-        sprintf(this->value, "%d", value);
+    address3(std::string type, const char *value) :
+        type(type), offset(-1), width(0) { //构造值类型
+        this->value = new char[strlen(value) + 1]();
+        strcpy(this->value, value);
     }
 
-    address3(std::string type, long long offset) :
-        type(type), width(address3typewidth::INT), offset(offset) { //构造int变量
-    }
-
-    address3(std::string type, const char *value, long long offset) :
-        type(type), offset(offset) { //构造string
-        this->value = strdup(value);
-        this->width = strlen(value) + 1;
+    address3(std::string type, long long offset, int width) :
+        type(type), offset(offset), width(width) { //构造变量类型
     }
 };
 
@@ -144,11 +140,12 @@ public:
         index_cur(offset), line_number(0) {
     }
     bool try_get_expr(node_expr *e, node_dag *new_node);                      //尝试匹配公共子表达式
-    bool try_get_const_int(node_expr *e, std::string type, int value);        //尝试匹配单个常量
+    bool try_get_const(node_expr *e, std::string type, const char *value);    //尝试匹配单个常量
     bool try_get_variable(node_expr *e, std::string type, long long &offset); //尝试匹配单个变量
-    static bool is_node_equal(node_dag *a, node_dag *b);
+    void create_value_and_assign(node_expr *e, std::string type, const char *value);
     void print_dag_node(node_dag *node);
     void print_dag_leaf(leaf_dag *leaf);
+    static bool is_node_equal(node_dag *a, node_dag *b);
 
     int index_cur; // 当前最大标号
     int line_number;
@@ -191,14 +188,15 @@ std::vector<int> *makelist(int i);
 void backpatch(std::vector<int> *arr, int instr);
 std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2);
 
-address3 *new_address3(std::string type, int value);
-address3 *new_address3(std::string type, long long offset);
-address3 *new_address3(std::string type, const char *value, long long offset);
-address3 *new_address3_immidiate(int value);
-address3 *new_address3_int(long long offset);
-address3 *new_address3_string(const char *value, long long offset);
+address3 *new_address3(std::string type, const char *value);
+address3 *new_address3(std::string type, long long offset, int width);
+address3 *new_address3_int_value(const char *value);
+address3 *new_address3_int_value(int value);
+address3 *new_address3_string_value(const char *value);
+address3 *new_address3_int(long long offset, int width);
+address3 *new_address3_string(long long offset, int width);
 address3 *new_temp_int();
-address3 *new_temp_string(const char *value);
+address3 *new_temp_string(int length);
 int get_nextinstr();
 
 void print_type_warning();

@@ -33,5 +33,6 @@ int main() {
     while (c < 6) {
         c = c + 1;
     }
+    "abcde";
     return 0;
 }
