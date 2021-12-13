@@ -9,6 +9,7 @@ std::vector<address3 *> address3_pool;
 std::vector<std::vector<int> *> bool_list_pool;
 long long offset_global = 0;
 char type_warning[1024] = {'\0'};
+long long const_string_offset = 0;
 
 DAG::~DAG() {
     node_dag *head = nullptr;
@@ -104,8 +105,8 @@ bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_off
 void DAG::create_value_and_assign(node_expr *e, std::string type, const char *value) {
     address3 *addr = nullptr;
     if (type == nonterminal_symbol_type::CSTRING) {
-        addr = new_temp_string(strlen(value));
-        gen_assign(new_address3_string_value(value), addr);
+        addr = new_const_string(value);
+        gen_string(new_address3_string_value(value), addr);
     } else if (type == nonterminal_symbol_type::CINT) {
         addr = new_temp_int();
         gen_assign(new_address3_int_value(value), addr);
@@ -301,9 +302,19 @@ void get_const_pool(node_t *node, DAG *dag) {
     }
 }
 
+void get_const_string_pool(node_t *node, DAG *dag) {
+    const char *type = node->node_type;
+    for (int i = 0; i < node->children_num; ++i) { get_const_string_pool(node->children[i], dag); }
+    if (strcmp(type, "expr_const") == 0 && strcmp(node->children[0]->node_type, "const:string") == 0) { // string常量
+        node_expr *e = (node_expr *)node;
+        dag->try_get_const(e, node->children[0]->node_type, node->children[0]->value);
+    }
+}
+
 void gen_code(node_t *root) {
     symbol_table_t *table = new_scope(NULL);
     DAG *dag = new DAG();
+    get_const_string_pool(root, dag);
     get_const_pool(root, dag);
     tranverse_tree(root, table, dag);
     free_table(table);
@@ -313,7 +324,7 @@ void gen_code(node_t *root) {
 void print_quadruple(quadruple *p) {
     QuadrupleType type = get_quadruple_type(p->op);
     if (type == QuadrupleType::BinaryOp || type == QuadrupleType::UnaryOp || type == QuadrupleType::Assign || type == QuadrupleType::Return
-        || type == QuadrupleType::Param || type == QuadrupleType::Call) {
+        || type == QuadrupleType::Param || type == QuadrupleType::Call || type == QuadrupleType::String) {
         printf("%s ", p->op.c_str());
         print_address3(p->arg1);
         print_address3(p->arg2);
@@ -346,10 +357,12 @@ void print_quadruple_array() {
 
 void print_address3(address3 *address) {
     if (address == nullptr) { return; }
-    if (address->type == address3type::INT || address->type == address3type::STRING || address->type == address3type::LONGLONG) {
+    if (address->type == address3type::INT || address->type == address3type::LONGLONG) {
         printf("(%s $%lld, %d) ", address->type.c_str(), address->offset, address->width);
     } else if (address->type == address3type::INT_VALUE || address->type == address3type::STRING_VALUE) {
         printf("(%s #%s) ", address->type.c_str(), address->value);
+    } else if (address->type == address3type::STRING) {
+        printf("(%s, v%lld)", address->type.c_str(), address->offset);
     } else {
         printf("type=%s width=%d offset=%lld\n", address->type.c_str(), address->width, address->offset);
     }
@@ -470,6 +483,10 @@ void gen_call(address3 *arg1, address3 *arg2) {
     quadruple_array.push_back(new quadruple("call", arg1, arg2, nullptr));
 }
 
+void gen_string(address3 *arg1, address3 *result) {
+    quadruple_array.push_back(new quadruple("string", arg1, nullptr, result));
+}
+
 QuadrupleType get_quadruple_type(std::string op) {
     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
         return QuadrupleType::BinaryOp;
@@ -489,6 +506,8 @@ QuadrupleType get_quadruple_type(std::string op) {
         return QuadrupleType::Param;
     } else if (op == "call") {
         return QuadrupleType::Call;
+    } else if (op == "string") {
+        return QuadrupleType::String;
     }
     return QuadrupleType::NotDefined;
 }
@@ -582,6 +601,13 @@ address3 *new_temp(std::string type) {
         return new_temp_longlong();
     }
     return new_temp_int(); // undifined behaviour!
+}
+
+address3 *new_const_string(const char *value) {
+    address3 *p = new address3(address3type::STRING, value);
+    p->offset = ++const_string_offset;
+    address3_pool.push_back(p);
+    return p;
 }
 
 void print_type_warning() {

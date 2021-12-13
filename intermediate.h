@@ -28,7 +28,7 @@ const std::string CINT = "const:int";
 const std::string CSTRING = "const:string";
 } // namespace nonterminal_symbol_type
 
-enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, Return, Param, Call, NotDefined };
+enum QuadrupleType { BinaryOp, UnaryOp, Assign, Goto, IfGoto, IfRelop, Return, Param, Call, String, NotDefined };
 
 //地址
 struct address3 {
@@ -129,9 +129,6 @@ public:
     std::unordered_map<std::string, leaf_dag *> leaf_map; // 叶子结点的哈希表存储单个叶子节点
 };
 
-void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag);
-void get_const_pool(node_t *node, DAG *dag);
-
 extern "C" {
 void gen_code(node_t *root);
 void print_quadruple_array();
@@ -144,6 +141,10 @@ node_t *new_node_flow(char *node_type, int n, ...);
 node_t *new_node_sign_n();
 void print_raw_tree(node_t *node, int depth);
 }
+
+void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag);
+void get_const_pool(node_t *node, DAG *dag);
+void get_const_string_pool(node_t *node, DAG *dag);
 
 void print_address3(address3 *address);
 void print_address3_value(address3 *address);
@@ -158,6 +159,7 @@ void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *resu
 void gen_return(address3 *result);                                                    // return result
 void gen_param(address3 *result);                                                     // param result
 void gen_call(address3 *arg1, address3 *arg2);                                        // call arg1(函数名) arg2(实参个数)
+void gen_string(address3 *arg1, address3 *result);                                    // string arg1 result
 QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);
@@ -177,6 +179,7 @@ address3 *new_temp_int();
 address3 *new_temp_string(int length);
 address3 *new_temp_longlong();
 address3 *new_temp(std::string type); //根据type生成非string类型的临时变量
+address3 *new_const_string(const char *value);
 
 void print_type_warning();
 void free_address3_pool();
