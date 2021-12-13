@@ -191,8 +191,8 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         if (!dag->try_get_expr(e, new node_dag(type, e1->index, e2->index))) {
             gen_binary_op(type, e1->addr, e2->addr, e->addr);
         }
-    } else if (strcmp(type, "minus") == 0) { //单目负号
-        if (!dag->try_get_expr(e, new node_dag("minus", e1->index))) {
+    } else if (strcmp(type, "minus") == 0 || strcmp(type, "&") == 0) { //单目负号
+        if (!dag->try_get_expr(e, new node_dag(type, e1->index))) {
             gen_unary_op(type, e1->addr, e->addr);
         }
     } else if (strcmp(type, "sign_m") == 0) { //控制标记M
@@ -478,7 +478,7 @@ void gen_return(address3 *result) {
 QuadrupleType get_quadruple_type(std::string op) {
     if (op == "+" || op == "-" || op == "*" || op == "/" || op == "%") {
         return QuadrupleType::BinaryOp;
-    } else if (op == "minus") {
+    } else if (op == "minus" || op == "&") {
         return QuadrupleType::UnaryOp;
     } else if (op == "assign") {
         return QuadrupleType::Assign;

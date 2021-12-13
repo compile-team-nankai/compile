@@ -34,5 +34,6 @@ int main() {
         c = c + 1;
     }
     "abcde";
+    &a;
     return 0;
 }
