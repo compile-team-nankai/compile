@@ -26,12 +26,12 @@ DAG::~DAG() {
     }
 }
 
-bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
+bool DAG::try_get_expr(node_expr *e, node_dag *new_node, std::string addr_type) {
     int index = -1;
     bool found = false;
     auto got = node_map.find(new_node->type);
-    if (got == node_map.end()) {                   // 匹配桶失败，新建桶
-        new_node->addr = e->addr = new_temp_int(); // 新建int型临时变量
+    if (got == node_map.end()) {                        // 匹配桶失败，新建桶
+        new_node->addr = e->addr = new_temp(addr_type); // 新建int型临时变量
         new_node->index = index = ++index_cur;
         node_map.emplace(new_node->type, new_node);
     } else {
@@ -43,8 +43,8 @@ bool DAG::try_get_expr(node_expr *e, node_dag *new_node) {
                 found = true;
                 delete new_node; // 不需要新结点，释放内存
                 break;
-            } else if (head->next == nullptr) {            // 匹配失败，将新结点加入链表
-                new_node->addr = e->addr = new_temp_int(); // 新建临时变量
+            } else if (head->next == nullptr) {                 // 匹配失败，将新结点加入链表
+                new_node->addr = e->addr = new_temp(addr_type); // 新建临时变量
                 new_node->index = index = ++index_cur;
                 head->next = new_node;
                 break;
@@ -75,12 +75,12 @@ bool DAG::try_get_const(node_expr *e, std::string type, const char *value) {
     return found;
 }
 
-bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_offset) {
+bool DAG::try_get_variable(node_expr *e, std::string type, long long &symbol_offset, std::string addr_type) {
     int index = -1;
     bool found = false;
-    if (symbol_offset == -1) {           //已声明，未分配内存
-        symbol_offset = offset_global;   //在符号表中记录offset
-        address3 *addr = new_temp_int(); //分配int型内存
+    if (symbol_offset == -1) {                //已声明，未分配内存
+        symbol_offset = offset_global;        //在符号表中记录offset
+        address3 *addr = new_temp(addr_type); //分配int型内存
         e->addr = addr;
         std::string key = type + std::to_string(symbol_offset);
         leaf_dag *new_leaf = new leaf_dag(addr);
@@ -183,16 +183,17 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         char tmp[100];
         sprintf(tmp, "%s%s%d", node->children[0]->value, "?line ", e->line);
         symbol_t *symbol = find_symbol(table, tmp);
-        dag->try_get_variable(e, "expr_id", symbol->offset);
+        dag->try_get_variable(e, node->children[0]->node_type, symbol->offset, address3type::INT);
     } else if (strcmp(type, "=") == 0) { //赋值符号
         e->addr = e1->addr;
         gen_assign(e2->addr, e1->addr);
-    } else if (strcmp(type, "+") == 0 || strcmp(type, "-") == 0 || strcmp(type, "*") == 0 || strcmp(type, "/") == 0 || strcmp(type, "%") == 0) { //算术运算符
-        if (!dag->try_get_expr(e, new node_dag(type, e1->index, e2->index))) {
+    } else if (strcmp(type, "+") == 0 || strcmp(type, "-") == 0 || strcmp(type, "*") == 0 || strcmp(type, "/") == 0 || strcmp(type, "%") == 0) { //双目运算符
+        if (!dag->try_get_expr(e, new node_dag(type, e1->index, e2->index), address3type::INT)) {
             gen_binary_op(type, e1->addr, e2->addr, e->addr);
         }
-    } else if (strcmp(type, "minus") == 0 || strcmp(type, "&") == 0) { //单目负号
-        if (!dag->try_get_expr(e, new node_dag(type, e1->index))) {
+    } else if (strcmp(type, "minus") == 0 || strcmp(type, "&") == 0) { //单目运算符
+        std::string addr_type = strcmp(type, "&") == 0 ? address3type::LONGLONG : address3type::INT;
+        if (!dag->try_get_expr(e, new node_dag(type, e1->index), addr_type)) {
             gen_unary_op(type, e1->addr, e->addr);
         }
     } else if (strcmp(type, "sign_m") == 0) { //控制标记M
@@ -345,7 +346,7 @@ void print_address3(address3 *address) {
     if (address == nullptr) {
         return;
     }
-    if (address->type == address3type::INT || address->type == address3type::STRING) {
+    if (address->type == address3type::INT || address->type == address3type::STRING || address->type == address3type::LONGLONG) {
         printf("(%s $%lld, %d) ", address->type.c_str(), address->offset, address->width);
     } else if (address->type == address3type::INT_VALUE || address->type == address3type::STRING_VALUE) {
         printf("(%s #%s) ", address->type.c_str(), address->value);
@@ -520,6 +521,10 @@ std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2) {
     return p;
 }
 
+int get_nextinstr() {
+    return quadruple_array.size();
+}
+
 address3 *new_address3(std::string type, const char *value) {
     address3 *p = new address3(type, value);
     address3_pool.push_back(p);
@@ -548,16 +553,20 @@ address3 *new_address3_string_value(const char *value) {
     return new_address3(address3type::STRING_VALUE, value);
 }
 
-address3 *new_address3_int(long long offset, int width) {
-    return new_address3(address3type::INT, offset, width);
+address3 *new_address3_int(long long offset) {
+    return new_address3(address3type::INT, offset, typewidth::INT);
 }
 
 address3 *new_address3_string(long long offset, int width) {
     return new_address3(address3type::STRING, offset, width);
 }
 
+address3 *new_address3_longlong(long long offset) {
+    return new_address3(address3type::LONGLONG, offset, typewidth::LONGLONG);
+}
+
 address3 *new_temp_int() {
-    address3 *p = new_address3_int(offset_global, typewidth::INT);
+    address3 *p = new_address3_int(offset_global);
     offset_global += typewidth::INT;
     return p;
 }
@@ -569,8 +578,19 @@ address3 *new_temp_string(int length) {
     return p;
 }
 
-int get_nextinstr() {
-    return quadruple_array.size();
+address3 *new_temp_longlong() {
+    address3 *p = new_address3_longlong(offset_global);
+    offset_global += typewidth::LONGLONG;
+    return p;
+}
+
+address3 *new_temp(std::string type) {
+    if (type == address3type::INT) {
+        return new_temp_int();
+    } else if (type == address3type::LONGLONG) {
+        return new_temp_longlong();
+    }
+    return new_temp_int(); // undifined behaviour!
 }
 
 void print_type_warning() {

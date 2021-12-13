@@ -12,6 +12,7 @@ extern "C" {
 
 namespace typewidth {
 const int INT = 4;
+const int LONGLONG = 8;
 } // namespace typewidth
 
 namespace address3type {
@@ -19,6 +20,7 @@ const std::string INT = "int";
 const std::string STRING = "string";
 const std::string INT_VALUE = "int_value"; //立即数(值类型)
 const std::string STRING_VALUE = "string_value";
+const std::string LONGLONG = "longlong";
 } // namespace address3type
 
 namespace nonterminal_symbol_type {
@@ -139,9 +141,9 @@ public:
     DAG(int offset) :
         index_cur(offset), line_number(0) {
     }
-    bool try_get_expr(node_expr *e, node_dag *new_node);                      //尝试匹配公共子表达式
-    bool try_get_const(node_expr *e, std::string type, const char *value);    //尝试匹配单个常量
-    bool try_get_variable(node_expr *e, std::string type, long long &offset); //尝试匹配单个变量
+    bool try_get_expr(node_expr *e, node_dag *new_node, std::string addr_type);                      //尝试匹配公共子表达式
+    bool try_get_const(node_expr *e, std::string type, const char *value);                           //尝试匹配单个常量
+    bool try_get_variable(node_expr *e, std::string type, long long &offset, std::string addr_type); //尝试匹配单个变量
     void create_value_and_assign(node_expr *e, std::string type, const char *value);
     void print_dag_node(node_dag *node);
     void print_dag_leaf(leaf_dag *leaf);
@@ -187,17 +189,20 @@ QuadrupleType get_quadruple_type(std::string op);
 std::vector<int> *makelist(int i);
 void backpatch(std::vector<int> *arr, int instr);
 std::vector<int> *merge(std::vector<int> *arr1, std::vector<int> *arr2);
+int get_nextinstr();
 
 address3 *new_address3(std::string type, const char *value);
 address3 *new_address3(std::string type, long long offset, int width);
 address3 *new_address3_int_value(const char *value);
 address3 *new_address3_int_value(int value);
 address3 *new_address3_string_value(const char *value);
-address3 *new_address3_int(long long offset, int width);
+address3 *new_address3_int(long long offset);
 address3 *new_address3_string(long long offset, int width);
+address3 *new_address3_longlong(long long offset);
 address3 *new_temp_int();
 address3 *new_temp_string(int length);
-int get_nextinstr();
+address3 *new_temp_longlong();
+address3 *new_temp(std::string type); //根据type生成非string类型的临时变量
 
 void print_type_warning();
 void free_address3_pool();
