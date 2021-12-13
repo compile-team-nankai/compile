@@ -155,9 +155,9 @@ void gen_goto(address3 *result);                                                
 void gen_goto(int result);                                                            // goto result(num)
 void gen_if_goto(address3 *arg1, address3 *result);                                   // if (arg1 == true) goto result
 void gen_if_relop(std::string op, address3 *arg1, address3 *arg2, address3 *result);  // if (arg1 rel.op arg2) goto result
-void gen_return(address3 *result);
-void gen_param(address3 *result);
-void gen_call(address3 *result);
+void gen_return(address3 *result);                                                    // return result
+void gen_param(address3 *result);                                                     // param result
+void gen_call(address3 *arg1, address3 *arg2);                                        // call arg1(函数名) arg2(实参个数)
 QuadrupleType get_quadruple_type(std::string op);
 
 std::vector<int> *makelist(int i);

@@ -284,7 +284,7 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
             gen_param(ex->addr);
         }
     } else if (strcmp(type, "call function") == 0) {
-        gen_call(new_address3_string_value(node->children[0]->value));
+        gen_call(new_address3_string_value(node->children[0]->value), new_address3_int_value(node->children[1]->children_num));
     }
 }
 
@@ -462,8 +462,8 @@ void gen_param(address3 *result) {
     quadruple_array.push_back(new quadruple("param", nullptr, nullptr, result));
 }
 
-void gen_call(address3 *result) {
-    quadruple_array.push_back(new quadruple("call", nullptr, nullptr, result));
+void gen_call(address3 *arg1, address3 *arg2) {
+    quadruple_array.push_back(new quadruple("call", arg1, arg2, nullptr));
 }
 
 QuadrupleType get_quadruple_type(std::string op) {
