@@ -285,6 +285,10 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
         }
     } else if (strcmp(type, "call function") == 0) {
         gen_call(new_address3_string_value(node->children[0]->value), new_address3_int_value(node->children[1]->children_num));
+    } else if (strcmp(type, "left_auto_incr") == 0) {
+        gen_binary_op("+", e1->addr, new_address3_int_value(1), e1->addr);
+    } else if (strcmp(type, "left_auto_decr") == 0) {
+        gen_binary_op("-", e1->addr, new_address3_int_value(1), e1->addr);
     }
 }
 

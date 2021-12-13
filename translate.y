@@ -204,7 +204,7 @@ void print_raw_tree(node_t *node, int depth);
         | member_selection                      { $$ = new_node("expression", 1, $1); }
         | LP expr RP                            { $$ = $2; }
         | expr subscript                        { $$ = new_node("expression", 2, $1, $2); }
-        | left_unary_operator expr %prec NOT    { $$ = new_node_expr($1->node_type, 1 ,$2); }
+        | left_unary_operator expr %prec NOT    { $$ = new_node_expr($1->node_type, 1 ,$2); free($1); }
         | expr right_unary_operator %prec NOT   { $$ = new_node_expr($2->node_type, 1 ,$1); }
         | expr ADD expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
         | expr SUB expr                         { $$ = new_node_expr($2->node_type, 2, $1, $3); }
@@ -247,8 +247,8 @@ void print_raw_tree(node_t *node, int depth);
         ;
 
     left_unary_operator: REF        { $$ = $1; }
-        | AUTO_INCR                 { $$ = $1; }
-        | AUTO_DECR                 { $$ = $1; }
+        | AUTO_INCR                 { $$ = new_node_expr("left_auto_incr", 1, $1); }
+        | AUTO_DECR                 { $$ = new_node_expr("left_auto_decr", 1, $1); }
         | SUB                       { $$ = new_node_expr("minus", 1, $1); }
         ;
 
