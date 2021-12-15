@@ -10,6 +10,7 @@ std::vector<std::vector<int> *> bool_list_pool;
 long long offset_global = 0;
 char type_warning[1024] = {'\0'};
 long long const_string_offset = 0;
+const std::string *environment_address_type = &address3type::INT; //默认采用32位地址
 
 DAG::~DAG() {
     node_dag *head = nullptr;
@@ -187,7 +188,7 @@ void tranverse_tree(node_t *node, symbol_table_t *table, DAG *dag) {
             gen_binary_op(type, e1->addr, e2->addr, e->addr);
         }
     } else if (strcmp(type, "minus") == 0 || strcmp(type, "&") == 0) { //单目运算符
-        std::string addr_type = strcmp(type, "&") == 0 ? address3type::LONGLONG : address3type::INT;
+        std::string addr_type = strcmp(type, "&") == 0 ? (*environment_address_type) : address3type::INT;
         if (!dag->try_get_expr(e, new node_dag(type, e1->index), addr_type)) { gen_unary_op(type, e1->addr, e->addr); }
     } else if (strcmp(type, "sign_m") == 0) { //控制标记M
         ((node_sign_m *)node)->instr = get_nextinstr();
@@ -312,6 +313,7 @@ void get_const_string_pool(node_t *node, DAG *dag) {
 }
 
 void gen_code(node_t *root) {
+    //如果需要设置64位编译环境，在调用gen_code前先调用set_environment_64bit
     symbol_table_t *table = new_scope(NULL);
     DAG *dag = new DAG();
     get_const_string_pool(root, dag);
@@ -633,4 +635,12 @@ void free_intermediate_structures() {
     free_address3_pool();
     free_quadruples_array();
     free_bool_list_pool();
+}
+
+void set_environment_32bit() {
+    environment_address_type = &address3type::INT;
+}
+
+void set_environment_64bit() {
+    environment_address_type = &address3type::LONGLONG;
 }

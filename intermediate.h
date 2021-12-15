@@ -185,5 +185,7 @@ void print_type_warning();
 void free_address3_pool();
 void free_quadruples_array();
 void free_bool_list_pool();
+void set_environment_32bit();
+void set_environment_64bit();
 
 #endif // COMPILE_INTERMEDIATE_H
