@@ -326,18 +326,16 @@ void gen_code(node_t *root) {
 void print_quadruple(quadruple *p) {
     QuadrupleType type = get_quadruple_type(p->op);
     if (type == QuadrupleType::BinaryOp || type == QuadrupleType::UnaryOp || type == QuadrupleType::Assign || type == QuadrupleType::Return
-        || type == QuadrupleType::Param || type == QuadrupleType::Call || type == QuadrupleType::String) {
+        || type == QuadrupleType::Param || type == QuadrupleType::Call || type == QuadrupleType::String || type == QuadrupleType::Goto) {
         printf("%s ", p->op.c_str());
         print_address3(p->arg1);
         print_address3(p->arg2);
         print_address3(p->result);
-    } else if (type == QuadrupleType::Goto) {
-        printf("goto ");
-        print_address3_value(p->result);
     } else if (type == QuadrupleType::IfGoto) {
         printf("if ");
         print_address3(p->arg1);
         printf("== true goto ");
+        print_address3(p->arg2);
         print_address3_value(p->result);
     } else if (type == QuadrupleType::IfRelop) {
         printf("if ");
@@ -358,13 +356,14 @@ void print_quadruple_array() {
 }
 
 void print_address3(address3 *address) {
-    if (address == nullptr) { return; }
-    if (address->type == address3type::INT || address->type == address3type::LONGLONG) {
+    if (address == nullptr) {
+        printf("__ ");
+    } else if (address->type == address3type::INT || address->type == address3type::LONGLONG) {
         printf("(%s $%lld, %d) ", address->type.c_str(), address->offset, address->width);
     } else if (address->type == address3type::INT_VALUE || address->type == address3type::STRING_VALUE) {
         printf("(%s #%s) ", address->type.c_str(), address->value);
     } else if (address->type == address3type::STRING) {
-        printf("(%s, v%lld)", address->type.c_str(), address->offset);
+        printf("(%s, v%lld) ", address->type.c_str(), address->offset);
     } else {
         printf("type=%s width=%d offset=%lld\n", address->type.c_str(), address->width, address->offset);
     }

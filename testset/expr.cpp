@@ -12,14 +12,14 @@ int main() {
     } else {
         a = 5;
     }
-    if (a > 1) {
+    if (a > 1 || b < 2) {
         b = 6;
     } else if (b < 10) {
         a = 7;
     }
-    if (a > 1) {
+    if (a > 1 && b < 2) {
         b = 8;
-    } else if (b < 10) {
+    } else if (!(b < 10)) {
         a = 9;
     } else {
         a = 10;

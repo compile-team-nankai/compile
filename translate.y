@@ -102,7 +102,7 @@ void print_raw_tree(node_t *node, int depth);
         ;
 
     call_args: expr             { $$ = new_node("call arguments", 1, $1); }
-        | call_args COMMA expr  { $$ = merge_node($1, $3); }
+        | call_args COMMA expr  { $$ = l_merge_node($1, $3); }
         | /* empty */           { $$ = new_node("call arguments", 0); }
         ;
 
