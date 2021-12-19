@@ -2,7 +2,9 @@
 #define ASM_GENERATOR_H
 #include "intermediate.h"
 #include <iostream>
+#include <typeinfo>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 namespace instruction {
 const std::string mov = "mov";
@@ -40,6 +42,7 @@ class immediate : public operand {
     long long num;
 
   public:
+    immediate(char *num);
     immediate(long long num);
     std::string to_string();
 };
@@ -119,29 +122,37 @@ class Asm {
     std::vector<line::variable *> variables;
     std::vector<line::line *> instructions;
     std::vector<line::extern_ *> externs;
+    std::unordered_set<int> labels;
     int stack_size = 0;
     void add_handler(quadruple);
     void sub_handler(quadruple);
     void mul_handler(quadruple);
     void div_handler(quadruple);
     void mod_handler(quadruple);
-    void je_handler(quadruple);
-    void jne_handler(quadruple);
-    void ja_handler(quadruple);
-    void jae_handler(quadruple);
-    void jb_handler(quadruple);
-    void jbe_handler(quadruple);
+    void j_handler(quadruple);
     void jmp_handler(quadruple);
     void call_handler(quadruple);
     void param_handler(quadruple);
+    void assign_handler(quadruple);
+    void string_handler(quadruple);
+    void address_handler(quadruple);
+    void return_handler(quadruple);
+
     const std::unordered_map<std::string, void (Asm::*)(quadruple)> handlers = {
-        {"+", &Asm::add_handler},     {"-", &Asm::sub_handler},
-        {"*", &Asm::mul_handler},     {"/", &Asm::div_handler},
-        {"%", &Asm::mod_handler},     {"==", &Asm::je_handler},
-        {"!=", &Asm::jne_handler},    {">", &Asm::ja_handler},
-        {"<", &Asm::jb_handler},      {">=", &Asm::jae_handler},
-        {"<=", &Asm::jbe_handler},    {"goto", &Asm::jmp_handler},
-        {"call", &Asm::call_handler}, {"param", &Asm::param_handler}};
+        {"+", &Asm::add_handler},         {"-", &Asm::sub_handler},
+        {"*", &Asm::mul_handler},         {"/", &Asm::div_handler},
+        {"%", &Asm::mod_handler},         {"==", &Asm::j_handler},
+        {"!=", &Asm::j_handler},          {">", &Asm::j_handler},
+        {"<", &Asm::j_handler},           {">=", &Asm::j_handler},
+        {"<=", &Asm::j_handler},          {"goto", &Asm::jmp_handler},
+        {"call", &Asm::call_handler},     {"param", &Asm::param_handler},
+        {"assign", &Asm::assign_handler}, {"string", &Asm::string_handler},
+        {"&", &Asm::address_handler},     {"return", &Asm::return_handler}};
+    const std::unordered_map<std::string, std::string> get_condition_jmp = {
+        {"==", instruction::je},  {"!=", instruction::jne},
+        {">", instruction::ja},   {"<", instruction::jb},
+        {">=", instruction::jae}, {"<=", instruction::jbe},
+    };
 
   public:
     Asm(line::label global = line::label("main"),
@@ -151,7 +162,7 @@ class Asm {
 
         });
     std::vector<std::string> to_lines();
-    void handle(std::vector<quadruple>);
+    void handle(std::vector<quadruple *>);
     ~Asm();
 };
 

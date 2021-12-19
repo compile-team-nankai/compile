@@ -15,7 +15,8 @@ extern node_t *new_node_bool(const char *node_type, int n, ...);
 extern node_t *new_node_sign_m();
 extern node_t *new_node_flow(const char *node_type, int n, ...);
 extern node_t *new_node_sign_n();
-void print_raw_tree(node_t *node, int depth);
+extern void print_raw_tree(node_t *node, int depth);
+extern void print_lines();
 %}
 
 %union{
@@ -49,11 +50,13 @@ void print_raw_tree(node_t *node, int depth);
 %%
 
     root: program   { 
-        print_raw_tree($1, 0);
+        //print_raw_tree($1, 0);
         gen_code($1);
-        print_quadruple_array();
-        print_type_warning();
-        print_error();
+
+        // print_quadruple_array();
+        print_lines();
+        // print_type_warning();
+        // print_error();
         free_tree($1);
         free_intermediate_structures();
         }
