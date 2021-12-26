@@ -1,13 +1,16 @@
 ## 编译原理
 
-### 构建
+### 运行环境
+Linux或者MacOS，安装gcc、flex、bison以及nasm。
+Windows环境下若要运行，请自行将相关Unix命令修改为Windows支持的命令，以及将表示路径的`/`修改为`\ `，并注意需要转义的部分。
 
+### 构建
 - 使用cmake构建（推荐）  
 [cmake安装方法](#install-cmake)
 ```bash
 mkdir build
 cd build && cmake ../ && cd ..
-cmake --build ./build --target exe
+cmake --build ./build --target gencode
 ```
 
 - 使用脚本构建
@@ -16,15 +19,18 @@ bash ./build.sh
 ```
 
 ### 运行
+生成汇编代码
 ```bash
-./exe [ 输入文件 [输出文件] ]
+./gencode 源代码
 ```
-后两个为可选参数，表示输入以及输出的文件，缺省默认为标准输入输出
+使用nasm编译源代码生成.o文件后，若要生成可执行文件请链接libc库，或直接使用gcc编译。
+或使用以下脚本快速生成可执行文件。
+```bash
+./run.sh 源代码 输出文件
+```
 例如
 ```bash
-./exe testset/base.cpp
-
-./exe testset/base.cpp output.txt
+./run.sh testset/base.cpp base
 ```
 
 ### 如何安装cmake <span id="install-cmake"></span>

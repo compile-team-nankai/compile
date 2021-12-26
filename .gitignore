@@ -2,7 +2,6 @@
 .idea
 .vscode
 cmake-build-debug
-exe
 y.output
 build
 gencode
