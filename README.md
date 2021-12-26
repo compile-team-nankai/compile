@@ -2,7 +2,7 @@
 
 ### 运行环境
 Linux或者MacOS，安装gcc、flex、bison以及nasm。
-Windows环境下若要运行，请自行将相关Unix命令修改为Windows支持的命令，以及将表示路径的`/`修改为`\ `，并注意需要转义的部分。
+Windows环境下若要运行，请自行将相关Unix命令修改为Windows支持的命令，以及将表示路径的`/`修改为`\`，并注意需要转义的部分。
 
 ### 构建
 - 使用cmake构建（推荐）  
